@@ -143,6 +143,7 @@
     if (/\bvolunteer|sign[\s-]?ups?\b|\bhelp(?:ers)? needed\b|\bneed(?:s|ing)? (?:help|people|volunteers|someone|donations?)\b|\bdonat|\bbring (?:in )?(?:snacks?|supplies)|\bdrive\b/i.test(t)) return 'volunteer';
     if (/\bmoms?'? (?:night|out|coffee|walk|brunch|lunch|dinner|drinks?)\b|\bgirls'? night\b|\bcoffee\b|\bbrunch\b|\bhappy hour\b|\bwine\b|\bbook club\b/i.test(t)) return 'social';
     if (/\bno school\b|\bplay ?date\b|\bbirthday\b|\bparty\b|\bpark\b|\bsleepover\b|\bkids'? (?:night|event)\b|\btrick or treat|\bhalloween walk\b/i.test(t)) return 'kids';
+    if (/\bhomework\b|\bassignments?\b|\bdue back\b|\bdue (?:by|on)\b|\bturn(?:ed)? in\b|\bclass project\b|\breading log\b/i.test(t)) return 'homework';
     return 'school';
   }
 

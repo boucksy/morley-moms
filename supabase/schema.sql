@@ -79,7 +79,7 @@ alter table public.events add column if not exists repeat_days text[];
 alter table public.events add column if not exists repeat_until date;
 alter table public.events drop constraint if exists events_category_check;
 alter table public.events add constraint events_category_check
-  check (category in ('pto','school','noschool','volunteer','social','kids','rides'));
+  check (category in ('pto','school','homework','noschool','volunteer','social','kids','rides'));
 alter table public.events drop constraint if exists events_repeat_days_check;
 alter table public.events add constraint events_repeat_days_check
   check (repeat_days is null or repeat_days <@ array['mon','tue','wed','thu','fri','sat','sun']);

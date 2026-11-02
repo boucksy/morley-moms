@@ -429,3 +429,6 @@ input[type="date"].input, input[type="time"].input { min-height: 52px; }
 /* The "Until" date only shows once a repeat day is picked. */
 .until-field{display:none}
 .seg:has(input[name=repeat_days]:checked) + .until-field{display:block}
+
+.event.cat-homework { border-left-color: #6C7A99; }
+.event.cat-spelling { border-left-color: var(--blue); background: var(--blue-soft); }

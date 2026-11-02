@@ -248,6 +248,7 @@
   const CATS = [
     { id: 'pto', label: 'PTO' },
     { id: 'school', label: 'School' },
+    { id: 'homework', label: 'Homework' },
     { id: 'noschool', label: 'No school' },
     { id: 'volunteer', label: 'Volunteer' },
     { id: 'social', label: 'Moms out' },
@@ -505,7 +506,30 @@
     return `${fmtDay(s)} · ${timeRange(ev)}`;
   }
 
+  function spellTestCard(ev) {
+    const d = new Date(ev.starts_at);
+    const today = startOfToday();
+    const soonCutoff = new Date(today); soonCutoff.setDate(soonCutoff.getDate() + 3);
+    const soon = d >= today && d <= soonCutoff;
+    const label = testLabel(isoDate(d));
+    return `
+      <article class="card event cat-spelling ${soon ? 'soon' : ''}">
+        <div class="datebadge" aria-hidden="true">
+          <span class="mon">${d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
+          <span class="day">${d.getDate()}</span>
+        </div>
+        <div class="body">
+          <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
+          <p class="meta">${ICON.clock}<span>${esc(fmtDay(d))}${label ? ' · ' + esc(label) : ''}</span></p>
+          <div class="card-tools">
+            <button class="btn btn-ghost btn-small" data-action="see-spelling" data-id="${esc(ev.spell_id)}">See the words</button>
+          </div>
+        </div>
+      </article>`;
+  }
+
   function eventCard(ev) {
+    if (ev._spell) return spellTestCard(ev);
     const repeating = isRepeating(ev);
     const next = repeating ? nextOccurrence(ev) : null;
     const d = repeating ? (next || new Date(ev.starts_at)) : new Date(ev.starts_at);
@@ -573,7 +597,13 @@
     const today = startOfToday();
     const off = noSchoolDates();
     const match = (e) => state.filter === 'all' || e.category === state.filter;
-    const oneTime = state.events.filter((e) => !isRepeating(e) && match(e));
+    // Spelling tests show on the calendar too, linked to their word list.
+    const spellEvents = (state.spelling || []).filter((s) => s.test_date).map((s) => ({
+      id: 'spell-' + s.id, _spell: true, spell_id: s.id, category: 'spelling',
+      title: 'Spelling test', subtitle: s.title || '', words: s.words || [],
+      starts_at: parseDate(s.test_date).toISOString(), ends_at: null, all_day: true, repeat_days: [],
+    }));
+    const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e));
     const items = [
       ...oneTime.filter((e) => lastDayOf(e) >= today),
       ...state.events.filter((e) => isRepeating(e) && match(e)).flatMap((e) => occurrencesOf(e, today, off)),
@@ -589,7 +619,7 @@
     }
     const shown = weeks.slice(0, state.weeksShown || 4);
     const past = oneTime.filter((e) => lastDayOf(e) < today).reverse().slice(0, 10);
-    const filters = [{ id: 'all', label: 'All' }, ...CATS].map((c) =>
+    const filters = [{ id: 'all', label: 'All' }, ...CATS, { id: 'spelling', label: 'Spelling' }].map((c) =>
       `<button class="filter ${state.filter === c.id ? 'on' : ''}" data-action="filter" data-filter="${c.id}">${c.label}</button>`).join('');
     return `
       <div class="page-head"><div><h2>What's coming up</h2></div></div>
@@ -1562,6 +1592,7 @@
         const ev = state.events.find((e) => String(e.id) === el.dataset.id);
         if (ev) { await cancelOneDay(ev, el.dataset.occ); closeSheet(); toast('Canceled for that day'); await refresh(); }
       }
+      else if (a === 'see-spelling') { state.tab = 'spelling'; renderTabs(); renderView(); }
       else if (a === 'edit-spell') addSpellingSheet({}, null, el.dataset.id);
       else if (a === 'del-event') {
         if (!confirm('Delete this event for everyone?')) return;
