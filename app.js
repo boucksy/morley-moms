@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 39;
+  const APP_VERSION = 40;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -618,9 +618,9 @@
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
+          ${ev.category === 'homework' && !ev._spell ? `<button class="turnin ${isDone(ev) ? 'on' : ''}" data-action="hw-done" data-id="${esc(ev.id)}" aria-pressed="${isDone(ev)}"><span class="box" aria-hidden="true">${isDone(ev) ? '✓' : ''}</span>${isDone(ev) ? 'Turned in' : 'Mark turned in'}</button>` : ''}
           <div class="card-tools">
             ${cleanLink(ev.link) ? `<a class="icon-btn icon-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer" aria-label="${esc((ev.link_label || 'Open link') + ' (' + linkHost(cleanLink(ev.link)) + ')')}" title="${esc((ev.link_label || 'Open link') + ' · ' + linkHost(cleanLink(ev.link)))}">${ICON.link}</a>` : ''}
-            ${ev.category === 'homework' && !ev._spell ? `<button class="icon-btn ${isDone(ev) ? 'on' : ''}" data-action="hw-done" data-id="${esc(ev.id)}" aria-pressed="${isDone(ev)}" aria-label="${isDone(ev) ? 'Turned in. Tap to undo' : 'Mark as turned in'}" title="${isDone(ev) ? 'Turned in' : 'Mark as turned in'}">${ICON.check || '✓'}</button>` : ''}
             <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" ${ev._occ ? `data-occ="${isoDate(localDay(ev.starts_at))}"` : ''} aria-label="Edit" title="Edit">${ICON.edit}</button>
           </div>
         </div>
