@@ -340,3 +340,5 @@ textarea.input { min-height: 90px; resize: vertical; }
 .link-btn.danger { color: var(--danger); }
 .tab { font-size: 11px; }
 .tab .pill { width: 50px; }
+.sp-extras { display: block; width: 100%; margin-top: 10px; text-align: left; background: rgba(255,255,255,.12); border: 2px dashed rgba(255,255,255,.4); color: var(--white); border-radius: 14px; padding: 10px 12px; font-weight: 800; font-size: 15px; }
+.sp-extras small { font-weight: 600; opacity: .8; }

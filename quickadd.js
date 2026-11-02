@@ -205,21 +205,14 @@
   }
 
   /* ---------- classroom specials ---------- */
+  // Morley's specials: Library, Music, Art and Gym ("PE" is heard as Gym too).
   const SPECIAL_NAMES = [
-    ['PE', /^(?:p\.?\s?e\.?|phys(?:ical)?\.?\s?ed(?:ucation)?|gym)$/i],
+    ['Gym', /^(?:gym|p\.?\s?e\.?|phys(?:ical)?\.?\s?ed(?:ucation)?)$/i],
     ['Art', /^art$/i],
     ['Music', /^music$/i],
     ['Library', /^(?:library|media(?: center)?)$/i],
-    ['STEM', /^(?:stem|steam|science lab)$/i],
-    ['Tech', /^(?:computers?|tech(?:nology)?|computer lab)$/i],
-    ['Guidance', /^(?:guidance|counseling|counselor)$/i],
-    ['Spanish', /^spanish$/i],
-    ['Band', /^band$/i],
-    ['Drama', /^drama$/i],
-    ['Health', /^health$/i],
-    ['Dance', /^dance$/i],
   ];
-  const SPECIAL_TOKEN = '(p\\.?\\s?e\\.?(?=[\\s,.;]|$)|phys(?:ical)?\\.?\\s?ed(?:ucation)?|gym|art|music|library|media(?: center)?|stem|steam|science lab|computers?|computer lab|tech(?:nology)?|guidance|counseling|counselor|spanish|band|drama|health|dance)';
+  const SPECIAL_TOKEN = '(p\\.?\\s?e\\.?(?=[\\s,.;]|$)|phys(?:ical)?\\.?\\s?ed(?:ucation)?|gym|art|music|library|media(?: center)?)';
   const WEEKDAY_TOKEN = '(mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri)(?:day)?s?';
   const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
   const canonSpecial = (w) => { const x = w.replace(/\s+/g, ' ').trim(); const hit = SPECIAL_NAMES.find(([, re]) => re.test(x)); return hit ? hit[0] : x; };

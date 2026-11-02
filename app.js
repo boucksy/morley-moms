@@ -75,8 +75,8 @@
         { id: 'e0', title: 'Halloween parade', category: 'school', starts_at: at(-3, 13, 30), all_day: false, location: 'School playground', pickup_dropoff: '', details: '', created_by: 'u-jess', created_by_name: 'Jess' },
       ],
       classrooms: [
-        { id: 'c1', name: 'Mrs. Smith', schedule: { mon: ['PE'], tue: ['Art'], wed: ['PE'], thu: ['Music'], fri: ['Library'] }, notes: '', created_by: 'u-jess', created_by_name: 'Jess' },
-        { id: 'c2', name: 'Mr. Lee', schedule: { mon: ['Music'], tue: ['PE'], wed: ['Library'], thu: ['Art'], fri: ['PE'] }, notes: 'Library books due back on Wednesday.', created_by: 'u-priya', created_by_name: 'Priya' },
+        { id: 'c1', name: 'Mrs. Smith', schedule: { mon: ['Gym'], tue: ['Art'], wed: ['Gym'], thu: ['Music'], fri: ['Library'] }, notes: '', created_by: 'u-jess', created_by_name: 'Jess' },
+        { id: 'c2', name: 'Mr. Lee', schedule: { mon: ['Music'], tue: ['Gym'], wed: ['Library'], thu: ['Art'], fri: ['Gym'] }, notes: 'Library books due back on Wednesday.', created_by: 'u-priya', created_by_name: 'Priya' },
       ],
       spelling: [
         { id: 's1', week_of: isoDate(monday), test_date: isoDate(addDaysTo(monday, 3)), title: 'Unit 4 — long a', words: ['rain', 'play', 'gate', 'train', 'great', 'eight', 'stay', 'paint', 'chase', 'weigh'], challenge_words: ['neighbor', 'celebrate'], notes: 'Practice sheet is due with the test.', photo_path: null, created_by: 'u-priya', created_by_name: 'Priya' },
@@ -603,10 +603,15 @@
 
   /* ---------------- specials ---------------- */
   const WEEK = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday']];
-  const COMMON_SPECIALS = ['PE', 'Art', 'Music', 'Library', 'STEM', 'Tech', 'Guidance', 'Spanish'];
-  const SPECIAL_TIPS = { PE: 'Wear sneakers 👟', Library: 'Return library books 📚', Music: '', Art: 'Wear clothes that can get messy 🎨' };
+  const COMMON_SPECIALS = ['Library', 'Music', 'Art', 'Gym'];
+  const SPECIAL_TIPS = { Gym: 'Wear sneakers 👟', Library: 'Return library books 📚', Art: 'Wear clothes that can get messy 🎨' };
   const MY_CLASS_KEY = 'mm.myClassroom';
   const getMyClass = () => { try { return localStorage.getItem(MY_CLASS_KEY) || ''; } catch { return ''; } };
+  // Private extras (like an enrichment pull-out) live only on this phone,
+  // so the group never sees which kids attend.
+  const EXTRAS_KEY = 'mm.myExtras';
+  const getExtras = () => { try { return JSON.parse(localStorage.getItem(EXTRAS_KEY) || 'null') || { label: 'Enrichment', days: [] }; } catch { return { label: 'Enrichment', days: [] }; } };
+  const setExtras = (x) => { try { localStorage.setItem(EXTRAS_KEY, JSON.stringify(x)); } catch {} };
   const setMyClass = (id) => { try { if (id) localStorage.setItem(MY_CLASS_KEY, id); else localStorage.removeItem(MY_CLASS_KEY); } catch {} };
 
   // Next school days (skips weekends): today if it's a weekday, then the next one.
@@ -645,7 +650,8 @@
           </select>
         </label>`;
       const days = mine ? schoolDays().map((d) => {
-        const list = (mine.schedule && mine.schedule[keyOf(d)]) || [];
+        const extras = getExtras();
+        const list = [...((mine.schedule && mine.schedule[keyOf(d)]) || []), ...(extras.days.includes(keyOf(d)) ? [extras.label] : [])];
         const tips = list.map((x) => SPECIAL_TIPS[x]).filter(Boolean);
         return `
           <div class="sp-day">
@@ -654,10 +660,14 @@
             ${tips.length ? `<p class="sp-tip">${esc(tips.join(' · '))}</p>` : ''}
           </div>`;
       }).join('') : '';
-      hero = `<div class="card sp-hero">${picker}${mine ? `<div class="sp-days">${days}</div>` : '<p class="hint">Pick your class to see today’s and tomorrow’s specials up top.</p>'}</div>`;
+      const ex = getExtras();
+      const exLine = mine ? `<button type="button" class="sp-extras" data-action="edit-extras">${ex.days.length
+        ? `${esc(ex.label)}: ${esc(ex.days.map((k) => WEEK.find((w) => w[0] === k)[1].slice(0, 3)).join(', '))} <small>· only on this phone · edit</small>`
+        : `+ Add ${esc(ex.label.toLowerCase())} days <small>· only on this phone</small>`}</button>` : '';
+      hero = `<div class="card sp-hero">${picker}${mine ? `<div class="sp-days">${days}</div>${exLine}` : '<p class="hint">Pick your class to see today’s and tomorrow’s specials up top.</p>'}</div>`;
     }
     return `
-      <div class="page-head"><div><h2>Specials</h2><p>PE, art, music, library… by class.</p></div></div>
+      <div class="page-head"><div><h2>Specials</h2><p>Library, music, art and gym, by class.</p></div></div>
       ${hero}
       ${rooms.length ? rooms.map((c) => `
         <article class="card sp-room ${c.id === myId ? 'mine' : ''}">
@@ -673,7 +683,28 @@
           ${c.notes ? `<p class="details">${linkify(c.notes)}</p>` : ''}
           ${canEdit(c) ? `<button class="link-btn inline danger" data-action="del-class" data-id="${esc(c.id)}" style="margin-top:12px">Delete this class</button>` : ''}
         </article>`).join('') : `
-        <div class="card empty"><p class="big">No classes yet</p><p>Tap + and say something like “Mrs. Smith’s class has PE Monday and Wednesday, art Tuesday, music Thursday and library Friday.”</p></div>`}`;
+        <div class="card empty"><p class="big">No classes yet</p><p>Tap + and say something like “Mrs. Smith’s class has gym Monday and Wednesday, art Tuesday, music Thursday and library Friday.”</p></div>`}`;
+  }
+
+  function extrasSheet() {
+    const ex = getExtras();
+    openSheet(`
+      <h2>Just for my kid</h2>
+      <p class="qa-sub">For a program only some kids go to, like enrichment. This is saved only on your phone. Nobody else in the group sees it.</p>
+      <form id="sheetForm">
+        <label class="field"><span>What it’s called</span><input class="input" name="label" required maxlength="30" value="${esc(ex.label)}"></label>
+        <div class="field"><span>Which days?</span>
+          <div class="seg">${WEEK.map(([k, label]) => `<label><input type="checkbox" name="days" value="${k}" ${ex.days.includes(k) ? 'checked' : ''}><span>${label.slice(0, 3)}</span></label>`).join('')}</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn btn-primary" type="submit">Save on this phone</button>
+          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+        </div>
+      </form>`, async (fd) => {
+      setExtras({ label: fd.get('label').trim() || 'Enrichment', days: fd.getAll('days') });
+      state.tab = 'specials';
+      toast('Saved on this phone');
+    });
   }
 
   function specialsSheet(p = {}, editId = null) {
@@ -686,12 +717,10 @@
     const id = existing ? existing.id : null;
     const dayRow = ([k, label]) => {
       const picked = sched[k] || [];
-      const extra = picked.filter((x) => !COMMON_SPECIALS.includes(x));
       return `
         <div class="sp-edit-day">
           <p class="sp-edit-label">${label}</p>
           <div class="seg">${COMMON_SPECIALS.map((sp) => `<label><input type="checkbox" name="d_${k}" value="${sp}" ${picked.includes(sp) ? 'checked' : ''}><span>${sp}</span></label>`).join('')}</div>
-          <input class="input sp-other" name="o_${k}" maxlength="80" value="${esc(extra.join(', '))}" placeholder="Other (optional)">
         </div>`;
     };
     openSheet(`
@@ -712,7 +741,7 @@
       </form>`, async (fd) => {
       const schedule = {};
       for (const [k] of WEEK) {
-        const list = [...fd.getAll(`d_${k}`), ...String(fd.get(`o_${k}`) || '').split(',').map((x) => x.trim()).filter(Boolean)];
+        const list = fd.getAll(`d_${k}`);
         if (list.length) schedule[k] = [...new Set(list)];
       }
       const nm = fd.get('name').trim();
@@ -758,7 +787,7 @@
         <p class="words-label">Try saying</p>
         <p>“Spelling test Thursday the 12th. Words are rain, play, gate, train. Challenge words neighbor and celebrate.”</p>
         <p>“PTO meeting Friday at 6:30 in the library.”</p>
-        <p>“Mrs. Smith’s class has PE Monday and Wednesday, art Tuesday, music Thursday and library Friday.”</p>
+        <p>“Mrs. Smith’s class has gym Monday and Wednesday, art Tuesday, music Thursday and library Friday.”</p>
       </div>
       <div class="qa-manual">Rather fill it in yourself?
         <button type="button" class="link-btn inline" data-action="manual-event">Event</button> ·
@@ -1040,6 +1069,7 @@
       else if (a === 'manual-spelling') { stopMic(); addSpellingSheet(); }
       else if (a === 'manual-specials') { stopMic(); specialsSheet(); }
       else if (a === 'edit-class') specialsSheet({}, el.dataset.id);
+      else if (a === 'edit-extras') extrasSheet();
       else if (a === 'del-class') {
         if (!confirm('Delete this class and its specials for everyone?')) return;
         await api.deleteClassroom(el.dataset.id); toast('Class deleted'); await refresh();

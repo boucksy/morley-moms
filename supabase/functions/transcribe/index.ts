@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   out.append("language", "en");
   out.append("response_format", "json");
   // A hint helps with school words and spelling lists.
-  out.append("prompt", "Morley Moms. Spelling test, spelling words, challenge words. PTO meeting, field trip, drop off, pick up. Specials: PE, art, music, library.");
+  out.append("prompt", "Morley Moms. Spelling test, spelling words, challenge words. PTO meeting, field trip, drop off, pick up. Specials: library, music, art, gym.");
 
   const res = await fetch(Deno.env.get("TRANSCRIBE_URL") ?? "https://api.groq.com/openai/v1/audio/transcriptions", {
     method: "POST",
