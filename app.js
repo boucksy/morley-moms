@@ -363,8 +363,10 @@
 
   // One-time "put it on your home screen" nudge. Shows once per phone, or any
   // time the link has ?install=1 (the welcome email uses that link).
+  let installShown = false;
   function maybeInstallSheet() {
-    if (isStandalone() || sharedText) return;
+    if (isStandalone() || sharedText || installShown) return;
+    installShown = true;
     const forced = /[?&]install=1/.test(location.search);
     let seen = false;
     try { seen = localStorage.getItem('mm-install-seen') === '1'; } catch {}
