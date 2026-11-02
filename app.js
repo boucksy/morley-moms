@@ -38,6 +38,9 @@
     toast._t = setTimeout(() => t.classList.remove('show'), 2600);
   }
 
+  // Morley Moms logo: a meadowlark singing on an M (icons/logo.svg).
+  const LOGO = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#1F4BC9"/><path d="M80 430V230h62l88 100 88-100h62v200h-60V334l-90 100-90-100v96z" fill="#FFFFFF"/><g transform="translate(349 232) scale(1.2)"><path d="M56 -72l52 16-6 13-52-9z" fill="#10131C"/><path d="M-48 -88c30-30 92-28 112 10 8 16 0 32-14 40-30 18-80 16-104-4-14-12-10-30 6-46z" fill="#10131C"/><path d="M-62 -80c-4 30 12 56 44 62 22 4 40-4 48-16-26 4-54-8-70-30-8-10-14-14-22-16z" fill="#FFC72C"/><circle cx="-48" cy="-108" r="30" fill="#10131C"/><path d="M-72 -98c4 18 18 30 36 30 6 0 10-2 12-4-12-14-30-24-48-26z" fill="#FFC72C"/><path d="M-62 -72l26 30 22-26-8-2-14 16-18-20z" fill="#10131C"/><path d="M-66 -124c10-8 26-10 38-4-12 0-26 4-36 10z" fill="#FFC72C"/><circle cx="-52" cy="-110" r="4.5" fill="#FFFFFF"/><path d="M-74 -116l-52-30 56 18z" fill="#10131C"/><path d="M-74 -106l-48-10 50 2z" fill="#10131C"/><path d="M-10 -34v34M10 -36l4 36" stroke="#10131C" stroke-width="7" stroke-linecap="round"/></g></svg>';
+
   const ICON = {
     calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>',
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/></svg>',
@@ -273,7 +276,7 @@
     app.innerHTML = `
       <div class="signin">
         <div class="signin-hero">
-          <span class="logo-mark big">MM</span>
+          <span class="logo-mark big">${LOGO}</span>
           <h1>Morley Moms</h1>
         </div>
         <div class="signin-card">${card}</div>
@@ -320,7 +323,7 @@
   function renderNotMember() {
     $('#app').innerHTML = `
       <div class="signin">
-        <div class="signin-hero"><span class="logo-mark big">MM</span><h1>Almost there</h1></div>
+        <div class="signin-hero"><span class="logo-mark big">${LOGO}</span><h1>Almost there</h1></div>
         <div class="signin-card">
           <h2>You're not on the list yet</h2>
           <p class="sub">This app is just for Morley Moms. Ask ${esc(cfg.ADMIN_CONTACT || 'the group admin')} to add your email, then sign in again.</p>
@@ -356,7 +359,7 @@
     $('#app').innerHTML = `
       <div class="shell">
         <header class="topbar">
-          <span class="logo-mark">MM</span>
+          <span class="logo-mark">${LOGO}</span>
           <h1>Morley Moms</h1>
           <button class="avatar" data-action="account" aria-label="Your account">${esc(initials(state.me.display_name || state.me.email))}</button>
         </header>
