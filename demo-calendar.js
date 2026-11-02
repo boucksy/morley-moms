@@ -2,6 +2,19 @@
 // Generated from the same list as supabase/seed-calendar.sql.
 window.MM_DEMO_CALENDAR = [
  {
+  "title": "Morley Moms Night Out — soup night",
+  "category": "social",
+  "date": "2026-11-11",
+  "start": null,
+  "end": null,
+  "last_day": null,
+  "location": null,
+  "details": "Probably starts at 6:30 or 7.",
+  "repeat_days": null,
+  "repeat_until": null,
+  "id": "cal0"
+ },
+ {
   "title": "PTO meeting",
   "category": "pto",
   "date": "2026-11-09",
@@ -12,7 +25,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal0"
+  "id": "cal1"
  },
  {
   "title": "Wizarding Club",
@@ -25,7 +38,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal1"
+  "id": "cal2"
  },
  {
   "title": "PTO Family Bingo Night",
@@ -38,7 +51,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal2"
+  "id": "cal3"
  },
  {
   "title": "Wizarding Club",
@@ -51,7 +64,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal3"
+  "id": "cal4"
  },
  {
   "title": "Wizarding Club",
@@ -64,7 +77,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal4"
+  "id": "cal5"
  },
  {
   "title": "No school",
@@ -74,10 +87,10 @@ window.MM_DEMO_CALENDAR = [
   "end": null,
   "last_day": "2026-11-30",
   "location": null,
-  "details": "Thanksgiving break.",
+  "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal5"
+  "id": "cal6"
  },
  {
   "title": "PTO meeting",
@@ -90,7 +103,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal6"
+  "id": "cal7"
  },
  {
   "title": "Last day before winter break",
@@ -103,7 +116,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal7"
+  "id": "cal8"
  },
  {
   "title": "Winter break — no school",
@@ -116,7 +129,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal8"
+  "id": "cal9"
  },
  {
   "title": "PTO meeting",
@@ -129,7 +142,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal9"
+  "id": "cal10"
  },
  {
   "title": "No school",
@@ -142,7 +155,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal10"
+  "id": "cal11"
  },
  {
   "title": "No school",
@@ -155,7 +168,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal11"
+  "id": "cal12"
  },
  {
   "title": "PTO Trivia Night fundraiser",
@@ -168,7 +181,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal12"
+  "id": "cal13"
  },
  {
   "title": "PTO meeting",
@@ -181,7 +194,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal13"
+  "id": "cal14"
  },
  {
   "title": "Spring break — no school",
@@ -194,7 +207,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal14"
+  "id": "cal15"
  },
  {
   "title": "PTO meeting",
@@ -207,7 +220,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal15"
+  "id": "cal16"
  },
  {
   "title": "Morley Garden Cleanup",
@@ -216,11 +229,11 @@ window.MM_DEMO_CALENDAR = [
   "start": "09:30",
   "end": "10:30",
   "last_day": null,
-  "location": "Morley garden",
+  "location": null,
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal16"
+  "id": "cal17"
  },
  {
   "title": "No school",
@@ -233,7 +246,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal17"
+  "id": "cal18"
  },
  {
   "title": "PTO meeting",
@@ -246,7 +259,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal18"
+  "id": "cal19"
  },
  {
   "title": "Morley Garden Cleanup",
@@ -255,11 +268,11 @@ window.MM_DEMO_CALENDAR = [
   "start": "09:00",
   "end": "10:00",
   "last_day": null,
-  "location": "Morley garden",
+  "location": null,
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal19"
+  "id": "cal20"
  },
  {
   "title": "No school",
@@ -272,7 +285,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal20"
+  "id": "cal21"
  },
  {
   "title": "Teacher Appreciation Week",
@@ -285,7 +298,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal21"
+  "id": "cal22"
  },
  {
   "title": "PTO Family Fun Night",
@@ -298,7 +311,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal22"
+  "id": "cal23"
  },
  {
   "title": "PTO meeting",
@@ -311,7 +324,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal23"
+  "id": "cal24"
  },
  {
   "title": "Last day of school",
@@ -324,7 +337,7 @@ window.MM_DEMO_CALENDAR = [
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal24"
+  "id": "cal25"
  },
  {
   "title": "Morley Garden Cleanup",
@@ -333,10 +346,10 @@ window.MM_DEMO_CALENDAR = [
   "start": "09:00",
   "end": "10:00",
   "last_day": null,
-  "location": "Morley garden",
+  "location": null,
   "details": null,
   "repeat_days": null,
   "repeat_until": null,
-  "id": "cal25"
+  "id": "cal26"
  }
 ];

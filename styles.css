@@ -349,3 +349,15 @@ textarea.input { min-height: 90px; resize: vertical; }
 .chip-now { background: var(--yellow); color: var(--ink); }
 .event.off .datebadge { background: #FDECEB; color: var(--danger); }
 .event.off.soon .datebadge { background: var(--danger); color: var(--white); }
+
+/* ---------- v5: no tags on calendar cards; the color stays as an edge ---------- */
+.event { border-left: 6px solid var(--line); }
+.event.cat-pto { border-left-color: var(--blue); }
+.event.cat-school { border-left-color: #8FA8EC; }
+.event.cat-noschool { border-left-color: var(--danger); }
+.event.cat-volunteer { border-left-color: var(--yellow); }
+.event.cat-social { border-left-color: var(--ink); }
+.event.cat-kids { border-left-color: #F2D36B; }
+.event.cat-rides { border-left-color: var(--blue-dark); }
+.event h3 { margin-top: 0; }
+.event .chip-now + h3 { margin-top: 6px; }

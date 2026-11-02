@@ -61,13 +61,10 @@
     const lastMonday = new Date(monday); lastMonday.setDate(lastMonday.getDate() - 7);
     let session = null;
     const db = {
-      members: [
-        { email: 'jess@example.com', display_name: 'Jess', is_admin: false },
-        { email: 'priya@example.com', display_name: 'Priya', is_admin: false },
-        { email: 'tanya@example.com', display_name: 'Tanya', is_admin: false },
-      ],
-      // Demo mode shows the real 2026–27 Morley calendar (demo-calendar.js),
-      // plus a made-up weekly ride so you can see how rides look.
+      // Demo mode only shows real facts: the school calendar. Spelling lists,
+      // classes and members start empty so you can try adding them.
+      members: [],
+      // The real 2026–27 Morley calendar (demo-calendar.js).
       events: [
         ...(window.MM_DEMO_CALENDAR || []).map((e) => {
           const allDay = !e.start;
@@ -77,18 +74,9 @@
             all_day: allDay, location: e.location, pickup_dropoff: null, details: e.details, repeat_days: e.repeat_days, repeat_until: e.repeat_until,
             created_by: 'u-miranda', created_by_name: 'Miranda' };
         }),
-        { id: 'ride-demo', title: 'Jess takes the girls home (example)', category: 'rides', starts_at: new Date('2026-11-03T15:38').toISOString(),
-          ends_at: new Date('2026-11-03T17:15').toISOString(), all_day: false, location: null, pickup_dropoff: 'Pickup at dismissal, 3:38',
-          details: 'Example ride. Real pickups are added privately, not in the demo.', repeat_days: ['tue'], repeat_until: '2027-05-20', created_by: 'u-jess', created_by_name: 'Jess' },
       ],
-      classrooms: [
-        { id: 'c1', name: 'Mrs. Smith', schedule: { mon: ['Gym'], tue: ['Art'], wed: ['Gym'], thu: ['Music'], fri: ['Library'] }, notes: '', created_by: 'u-jess', created_by_name: 'Jess' },
-        { id: 'c2', name: 'Mr. Lee', schedule: { mon: ['Music'], tue: ['Gym'], wed: ['Library'], thu: ['Art'], fri: ['Gym'] }, notes: 'Library books due back on Wednesday.', created_by: 'u-priya', created_by_name: 'Priya' },
-      ],
-      spelling: [
-        { id: 's1', week_of: isoDate(monday), test_date: isoDate(addDaysTo(monday, 3)), title: 'Unit 4 — long a', words: ['rain', 'play', 'gate', 'train', 'great', 'eight', 'stay', 'paint', 'chase', 'weigh'], challenge_words: ['neighbor', 'celebrate'], notes: 'Practice sheet is due with the test.', photo_path: null, created_by: 'u-priya', created_by_name: 'Priya' },
-        { id: 's0', week_of: isoDate(lastMonday), test_date: isoDate(addDaysTo(lastMonday, 4)), title: 'Unit 3 — short vowels review', words: ['jump', 'stick', 'shell', 'clock', 'trust', 'bench', 'frog', 'grin'], challenge_words: [], notes: '', photo_path: null, created_by: 'u-jess', created_by_name: 'Jess' },
-      ],
+      classrooms: [],
+      spelling: [],
     };
     const delay = (v) => new Promise((r) => setTimeout(() => r(v), 150));
     return {
@@ -331,7 +319,7 @@
           <h1>Morley Moms</h1>
           <button class="avatar" data-action="account" aria-label="Your account">${esc(initials(state.me.display_name || state.me.email))}</button>
         </header>
-        ${LIVE ? '' : '<div class="demo-banner">Demo mode — sample data, nothing is saved</div>'}
+        ${LIVE ? '' : '<div class="demo-banner">Demo mode — nothing you add is saved</div>'}
         <main class="content" id="view"></main>
         <button class="fab" data-action="add" aria-label="Add">${ICON.plus}</button>
         <nav class="tabbar" id="tabbar"></nav>
@@ -426,7 +414,9 @@
     }
     if (ev.all_day) {
       const end = lastDayOf(ev);
-      return end > localDay(ev.starts_at) ? `${fmtDay(s)} – ${fmtDay(end)}` : `${fmtDay(s)} · All day`;
+      if (end > localDay(ev.starts_at)) return `${fmtDay(s)} – ${fmtDay(end)}`;
+      // Days off and school days are truly all day; anything else just has no time yet.
+      return ['noschool', 'school'].includes(ev.category) ? `${fmtDay(s)} · All day` : `${fmtDay(s)} · Time TBD`;
     }
     return `${fmtDay(s)} · ${timeRange(ev)}`;
   }
@@ -440,13 +430,13 @@
     const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article class="card event ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''}">
+      <article class="card event cat-${esc(ev.category)} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''}">
         <div class="datebadge" aria-hidden="true">
           <span class="mon">${d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
           <span class="day">${d.getDate()}</span>
         </div>
         <div class="body">
-          <span class="chip chip-${esc(ev.category)}">${esc(catLabel(ev.category))}</span>${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? ' <span class="chip chip-now">Happening now</span>' : ''}
+          ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
           <h3>${esc(ev.title)}</h3>
           <p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>
           ${repeating && next ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')}<span><strong>Next:</strong> ${esc(fmtDay(next))}</span></p>` : ''}
@@ -671,7 +661,7 @@
         <div class="field"><span>Photo of the sheet <small>(optional)</small></span>
           <div id="photoSlot">${attached ? `<div class="attached">📷 Photo attached <button type="button" class="link-btn inline" data-action="drop-photo">Remove</button></div>` : '<input class="input" type="file" name="photo" accept="image/*">'}</div>
         </div>
-        <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Practice sheet due, tips, anything else">${esc(p.notes || '')}</textarea></label>
+        <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Anything else from the sheet">${esc(p.notes || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Post list</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
@@ -707,7 +697,6 @@
   /* ---------------- specials ---------------- */
   const WEEK = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday']];
   const COMMON_SPECIALS = ['Library', 'Music', 'Art', 'Gym'];
-  const SPECIAL_TIPS = { Gym: 'Wear sneakers 👟', Library: 'Return library books 📚', Art: 'Wear clothes that can get messy 🎨' };
   const MY_CLASS_KEY = 'mm.myClassroom';
   const getMyClass = () => { try { return localStorage.getItem(MY_CLASS_KEY) || ''; } catch { return ''; } };
   // Private extras (like an enrichment pull-out) live only on this phone,
@@ -755,12 +744,10 @@
       const days = mine ? schoolDays().map((d) => {
         const extras = getExtras();
         const list = [...((mine.schedule && mine.schedule[keyOf(d)]) || []), ...(extras.days.includes(keyOf(d)) ? [extras.label] : [])];
-        const tips = list.map((x) => SPECIAL_TIPS[x]).filter(Boolean);
         return `
           <div class="sp-day">
             <p class="sp-when">${esc(dayLabel(d))} <small>${esc(d.toLocaleDateString(undefined, { weekday: 'short' }))}</small></p>
             <p class="sp-what">${list.length ? esc(list.join(' + ')) : 'No specials'}</p>
-            ${tips.length ? `<p class="sp-tip">${esc(tips.join(' · '))}</p>` : ''}
           </div>`;
       }).join('') : '';
       const ex = getExtras();
