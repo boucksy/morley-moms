@@ -178,8 +178,8 @@ textarea.input { min-height: 90px; resize: vertical; }
 /* Spelling */
 .spell.current { border-top: 6px solid var(--yellow); }
 .spell-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.spell-head h3 { font-size: 18px; font-weight: 800; }
-.spell-head .when { color: var(--ink-2); font-size: 14px; margin-top: 2px; }
+.spell-date { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.1; letter-spacing: -.3px; color: var(--ink); }
+.spell-head h3 { font-size: 17px; font-weight: 700; color: var(--ink-2); margin-top: 4px; }
 .words { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .word {
   background: var(--bg); border: 2px solid var(--line);

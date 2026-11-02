@@ -20,6 +20,12 @@
   const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
   const mondayOf = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
   const fmtDay = (d) => d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  // "Nov 2 – 6" (or "Oct 30 – Nov 3" across months) for a Monday-start school week
+  const weekRange = (iso) => {
+    const a = parseDate(iso); const b = new Date(a); b.setDate(b.getDate() + 4);
+    const mon = (d) => d.toLocaleDateString(undefined, { month: 'short' });
+    return a.getMonth() === b.getMonth() ? `${mon(a)} ${a.getDate()} – ${b.getDate()}` : `${mon(a)} ${a.getDate()} – ${mon(b)} ${b.getDate()}`;
+  };
   const fmtTime = (d) => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
 
@@ -449,8 +455,8 @@
           <div class="spell-head">
             <div>
               ${current ? '<span class="chip chip-volunteer">This week</span>' : ''}
-              <h3 style="margin-top:${current ? '8px' : '0'}">${esc(s.title || 'Spelling list')}</h3>
-              <p class="when">Week of ${esc(fmtDay(parseDate(s.week_of)))}</p>
+              <p class="spell-date" style="margin-top:${current ? '8px' : '0'}">${esc(weekRange(s.week_of))}</p>
+              ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
             </div>
             ${canEdit(s) ? `<button class="btn btn-danger btn-small" data-action="del-spell" data-id="${esc(s.id)}">Delete</button>` : ''}
           </div>
