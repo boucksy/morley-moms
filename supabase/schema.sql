@@ -225,6 +225,10 @@ drop trigger if exists classrooms_touch on public.classrooms;
 create trigger classrooms_touch before update on public.classrooms
   for each row execute function public.touch_updated_at();
 
+-- Which class an event or spelling list is for (empty = everyone).
+alter table public.events add column if not exists classroom_id uuid references public.classrooms(id) on delete set null;
+alter table public.spelling_lists add column if not exists classroom_id uuid references public.classrooms(id) on delete set null;
+
 alter table public.classrooms enable row level security;
 revoke all on public.classrooms from anon;
 

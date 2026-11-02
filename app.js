@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 34;
+  const APP_VERSION = 35;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -541,6 +541,25 @@
     return `${fmtDay(s)} · ${timeRange(ev)}`;
   }
 
+  // ---- which class an item is for ----
+  const classById = (id) => state.classrooms.find((c) => c.id === id);
+  const classTag = (id) => { const c = id && classById(id); return c ? `${c.name}\u2019s class` : ''; };
+  const classMeta = (id) => (classTag(id) ? `<p class="meta">${ICON.users}<span>${esc(classTag(id))}</span></p>` : '');
+  // Items for one class are hidden from moms who picked a different class. Items for everyone always show.
+  const forMe = (item) => !item.classroom_id || !getMyClass() || item.classroom_id === getMyClass();
+  const classPicker = (selected, mine = true) => state.classrooms.length ? `
+        <label class="field"><span>For which class? <small>(optional)</small></span>
+          <select class="input" name="classroom_id"><option value="">Everyone</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === (selected === undefined ? '' : selected) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+        </label>` : '';
+  // The little "Showing for" bar, only once something has been marked for a class.
+  function classBar() {
+    const used = state.events.some((e) => e.classroom_id) || state.spelling.some((s) => s.classroom_id);
+    if (!used || !state.classrooms.length) return '';
+    const mine = getMyClass();
+    return `<label class="class-bar"><span>Showing for</span>
+      <select class="input" id="myClass"><option value="">All classes</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === mine ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+  }
+
   function spellTestCard(ev) {
     const d = new Date(ev.starts_at);
     const today = startOfToday();
@@ -555,6 +574,7 @@
         </div>
         <div class="body">
           <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
+          ${classMeta(ev.classroom_id)}
           <p class="meta">${ICON.clock}<span><strong>${esc(label || fmtDay(d))}</strong></span></p>
           <button class="btn btn-ghost btn-small" style="margin-top:8px" data-action="see-spelling" data-id="${esc(ev.spell_id)}">See the words</button>
         </div>
@@ -592,6 +612,7 @@
           <p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>
           ${repeating && next ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')}<span><strong>Next:</strong> ${esc(fmtDay(next))}</span></p>` : ''}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
+          ${classMeta(ev.classroom_id)}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
           <div class="card-tools">
@@ -642,14 +663,14 @@
     const match = (e) => state.filter === 'all' || e.category === state.filter;
     // Spelling tests show on the calendar too, linked to their word list.
     const spellEvents = (state.spelling || []).filter((s) => s.test_date).map((s) => ({
-      id: 'spell-' + s.id, _spell: true, spell_id: s.id, category: 'spelling',
+      id: 'spell-' + s.id, _spell: true, spell_id: s.id, category: 'spelling', classroom_id: s.classroom_id || null,
       title: 'Spelling test', subtitle: s.title || '', words: s.words || [],
       starts_at: parseDate(s.test_date).toISOString(), ends_at: null, all_day: true, repeat_days: [],
     }));
-    const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e));
+    const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
     const items = [
       ...oneTime.filter((e) => lastDayOf(e) >= today),
-      ...state.events.filter((e) => isRepeating(e) && match(e)).flatMap((e) => occurrencesOf(e, today, off)),
+      ...state.events.filter((e) => isRepeating(e) && match(e) && forMe(e)).flatMap((e) => occurrencesOf(e, today, off)),
     ];
     // Something already under way (like a break) is listed under this week.
     const showDay = (e) => new Date(Math.max(localDay(e.starts_at), today));
@@ -666,6 +687,7 @@
       `<button class="filter ${state.filter === c.id ? 'on' : ''}" data-action="filter" data-filter="${c.id}">${c.label}</button>`).join('');
     return `
       <div class="page-head"><div><h2>What's coming up</h2></div></div>
+      ${classBar()}
       <div class="filters" role="toolbar" aria-label="Filter events">${filters}</div>
       ${shown.length ? shown.map((w) => `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>${w.items.map(eventCard).join('')}`).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
@@ -685,7 +707,7 @@
     const s = new Date(ev.starts_at);
     const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     return {
-      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details, link: ev.link || '', link_label: ev.link_label || '',
+      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details, link: ev.link || '', link_label: ev.link_label || '', classroom_id: ev.classroom_id || '',
       date: isoDate(s),
       time: ev.all_day ? '' : hhmm(s),
       end_time: !ev.all_day && ev.ends_at ? hhmm(new Date(ev.ends_at)) : '',
@@ -710,6 +732,7 @@
         <div class="field"><span>Type</span>
           <div class="seg">${CATS.map((c) => `<label><input type="radio" name="category" value="${c.id}" ${c.id === cat ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
         </div>
+        ${classPicker(p.classroom_id !== undefined ? p.classroom_id : (getMyClass() || ''))}
         <div class="row2">
           <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span>${reps.length ? 'Starts' : 'Date'}</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
           <label class="field"><span>Last day <small>(optional)</small></span><input class="input" type="date" name="end_date" value="${esc(p.end_date || '')}"></label>
@@ -757,6 +780,7 @@
         location: fd.get('location').trim() || null,
         pickup_dropoff: fd.get('pickup_dropoff').trim() || null,
         details: fd.get('details').trim() || null,
+        classroom_id: fd.get('classroom_id') || null,
         link: cleanLink(fd.get('link')),
         link_label: cleanLink(fd.get('link')) ? (fd.get('link_label').trim() || null) : null,
       };
@@ -845,15 +869,16 @@
         <div class="card empty"><p class="big">No lists yet</p></div>`;
     }
     const todayIso = isoDate(startOfToday());
-    const upcoming = state.spelling.filter((s) => s.test_date && s.test_date >= todayIso).sort((a, b) => a.test_date.localeCompare(b.test_date));
+    const lists = state.spelling.filter(forMe);
+    const upcoming = lists.filter((s) => s.test_date && s.test_date >= todayIso).sort((a, b) => a.test_date.localeCompare(b.test_date));
     const nextId = upcoming.length ? upcoming[0].id : null;
     // Upcoming tests first (soonest on top), then past lists (most recent first).
-    const past = state.spelling.filter((s) => !(s.test_date && s.test_date >= todayIso))
+    const past = lists.filter((s) => !(s.test_date && s.test_date >= todayIso))
       .sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of));
     const ordered = [...upcoming, ...past];
     return `
       <div class="page-head"><div><h2>Spelling words</h2></div></div>
-      ${upcoming.length ? '' : ''}
+      ${classBar()}
       ${ordered.map((s, i) => {
         const next = s.id === nextId;
         const countdown = s.test_date ? testLabel(s.test_date) : '';
@@ -866,6 +891,7 @@
               ${next ? `<span class="chip chip-volunteer">Up next${countdown ? ' · ' + esc(countdown) : ''}</span>` : ''}
               <p class="spell-date" style="margin-top:${next ? '8px' : '0'}">${esc(headline)}</p>
               ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
+              ${classMeta(s.classroom_id)}
             </div>
             <button class="btn btn-ghost btn-small" data-action="edit-spell" data-id="${esc(s.id)}">${ICON.edit} Edit</button>
           </div>
@@ -915,6 +941,7 @@
       <form id="sheetForm">
         <label class="field ${p._filled && !p.test_date ? 'needs' : ''}"><span>Test day</span><input class="input" type="date" name="test_date" required value="${esc(p.test_date || '')}">
           ${p._filled && !p.test_date ? '' : ''}</label>
+        ${classPicker(p.classroom_id !== undefined ? p.classroom_id : (getMyClass() || ''))}
         <label class="field"><span>Unit / pattern <small>(optional)</small></span><input class="input" name="title" maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Unit 5 — long e"></label>
         <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="Separated by commas or one per line">${esc(words)}</textarea></label>
         <label class="field"><span>Challenge words <small>(optional)</small></span><input class="input" name="challenge_words" maxlength="500" value="${esc(challenge)}" placeholder="e.g. neighbor, celebrate"></label>
@@ -940,6 +967,7 @@
         test_date: testDate,
         week_of: isoDate(mondayOf(parseDate(testDate))),
         title: fd.get('title').trim() || null,
+        classroom_id: fd.get('classroom_id') || null,
         words: w,
         challenge_words: list(fd.get('challenge_words')).slice(0, 20),
         notes: fd.get('notes').trim() || null,
@@ -1380,6 +1408,13 @@
 
   // Turn the AI reader's answer into a filled-in form.
   function aiToForm(v) {
+    const teacher = (v.teacher || '').trim();
+    const cls = teacher ? findClass(teacher) : null;
+    const out = aiToFormBase(v);
+    if (out && cls) out.classroom_id = cls.id;
+    return out;
+  }
+  function aiToFormBase(v) {
     if (v.kind === 'spelling' && v.words && v.words.length) {
       return { type: 'spelling', title: v.title || undefined, test_date: v.test_date || null, words: v.words, challenge_words: v.challenge_words || [] };
     }
