@@ -27,6 +27,7 @@
     return a.getMonth() === b.getMonth() ? `${mon(a)} ${a.getDate()} – ${b.getDate()}` : `${mon(a)} ${a.getDate()} – ${mon(b)} ${b.getDate()}`;
   };
   const fmtTime = (d) => d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const addDaysTo = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()));
 
   function toast(msg) {
@@ -41,6 +42,8 @@
     calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>',
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/></svg>',
     users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.6c2.2.4 3.6 2 4 4.6"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
@@ -70,8 +73,8 @@
         { id: 'e0', title: 'Halloween parade', category: 'school', starts_at: at(-3, 13, 30), all_day: false, location: 'School playground', pickup_dropoff: '', details: '', created_by: 'u-jess', created_by_name: 'Jess' },
       ],
       spelling: [
-        { id: 's1', week_of: isoDate(monday), title: 'Unit 4 — long a', words: ['rain', 'play', 'gate', 'train', 'great', 'eight', 'stay', 'paint', 'chase', 'weigh'], notes: 'Test on Friday. Challenge words: neighbor, celebrate.', photo_path: null, created_by: 'u-priya', created_by_name: 'Priya' },
-        { id: 's0', week_of: isoDate(lastMonday), title: 'Unit 3 — short vowels review', words: ['jump', 'stick', 'shell', 'clock', 'trust', 'bench', 'frog', 'grin'], notes: '', photo_path: null, created_by: 'u-jess', created_by_name: 'Jess' },
+        { id: 's1', week_of: isoDate(monday), test_date: isoDate(addDaysTo(monday, 3)), title: 'Unit 4 — long a', words: ['rain', 'play', 'gate', 'train', 'great', 'eight', 'stay', 'paint', 'chase', 'weigh'], challenge_words: ['neighbor', 'celebrate'], notes: 'Practice sheet is due with the test.', photo_path: null, created_by: 'u-priya', created_by_name: 'Priya' },
+        { id: 's0', week_of: isoDate(lastMonday), test_date: isoDate(addDaysTo(lastMonday, 4)), title: 'Unit 3 — short vowels review', words: ['jump', 'stick', 'shell', 'clock', 'trust', 'bench', 'frog', 'grin'], challenge_words: [], notes: '', photo_path: null, created_by: 'u-jess', created_by_name: 'Jess' },
       ],
     };
     const delay = (v) => new Promise((r) => setTimeout(() => r(v), 150));
@@ -96,7 +99,7 @@
       async listEvents() { return delay([...db.events].sort((a, b) => a.starts_at.localeCompare(b.starts_at))); },
       async addEvent(row) { db.events.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name }); return delay(); },
       async deleteEvent(id) { db.events = db.events.filter((e) => e.id !== id); return delay(); },
-      async listSpelling() { return delay([...db.spelling].sort((a, b) => b.week_of.localeCompare(a.week_of))); },
+      async listSpelling() { return delay([...db.spelling].sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of))); },
       async addSpelling(row, file) {
         const photo_path = file ? URL.createObjectURL(file) : null;
         db.spelling.push({ ...row, id: uid(), photo_path, created_by: 'u-me', created_by_name: state.me.display_name });
@@ -135,7 +138,7 @@
       async listEvents() { return ok(await sb.from('events').select('*').order('starts_at')); },
       async addEvent(row) { ok(await sb.from('events').insert(row)); },
       async deleteEvent(id) { ok(await sb.from('events').delete().eq('id', id)); },
-      async listSpelling() { return ok(await sb.from('spelling_lists').select('*').order('week_of', { ascending: false }).limit(30)); },
+      async listSpelling() { return ok(await sb.from('spelling_lists').select('*').order('test_date', { ascending: false, nullsFirst: false }).order('week_of', { ascending: false }).limit(30)); },
       async addSpelling(row, file) {
         if (file) {
           const path = `${uid()}.jpg`;
@@ -374,21 +377,23 @@
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
   }
 
-  function addEventSheet() {
+  function addEventSheet(p = {}) {
+    const cat = p.category || 'pto';
     openSheet(`
       <h2>New event</h2>
+      ${filledNote(p)}
       <form id="sheetForm">
-        <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" placeholder="e.g. Book fair volunteers"></label>
+        <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Book fair volunteers"></label>
         <div class="field"><span>Type</span>
-          <div class="seg">${CATS.map((c, i) => `<label><input type="radio" name="category" value="${c.id}" ${i === 0 ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
+          <div class="seg">${CATS.map((c) => `<label><input type="radio" name="category" value="${c.id}" ${c.id === cat ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
         </div>
         <div class="row2">
-          <label class="field"><span>Date</span><input class="input" type="date" name="date" required value="${isoDate(new Date())}"></label>
-          <label class="field"><span>Time <small>(optional)</small></span><input class="input" type="time" name="time"></label>
+          <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span>Date</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
+          <label class="field"><span>Time <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
         </div>
-        <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" placeholder="e.g. School gym"></label>
-        <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><input class="input" name="pickup_dropoff" maxlength="300" placeholder="e.g. East doors at 8:45, pickup at 2:30"></label>
-        <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What to bring, sign-up links, anything else"></textarea></label>
+        <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. School gym"></label>
+        <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
+        <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What to bring, sign-up links, anything else">${esc(p.details || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Post event</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
@@ -440,27 +445,49 @@
   }
 
   /* ---------------- spelling ---------------- */
+  function testLabel(iso) {
+    const d = parseDate(iso);
+    const days = Math.round((d - startOfToday()) / 86400000);
+    if (days === 0) return 'Today!';
+    if (days === 1) return 'Tomorrow';
+    if (days > 1 && days < 14) return `In ${days} days`;
+    return '';
+  }
+
   function spellingView() {
-    const thisWeek = isoDate(mondayOf(new Date()));
     if (!state.spelling.length) {
       return `<div class="page-head"><div><h2>Spelling words</h2></div></div>
-        <div class="card empty"><p class="big">No lists yet</p><p>Tap + to add this week's words or snap a photo of the list.</p></div>`;
+        <div class="card empty"><p class="big">No lists yet</p><p>Tap + and snap the Friday-folder sheet, or just say the words.</p></div>`;
     }
+    const todayIso = isoDate(startOfToday());
+    const upcoming = state.spelling.filter((s) => s.test_date && s.test_date >= todayIso).sort((a, b) => a.test_date.localeCompare(b.test_date));
+    const nextId = upcoming.length ? upcoming[0].id : null;
+    // Upcoming tests first (soonest on top), then past lists (most recent first).
+    const past = state.spelling.filter((s) => !(s.test_date && s.test_date >= todayIso))
+      .sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of));
+    const ordered = [...upcoming, ...past];
     return `
-      <div class="page-head"><div><h2>Spelling words</h2><p>Newest first. Test is usually Friday.</p></div></div>
-      ${state.spelling.map((s) => {
-        const current = s.week_of === thisWeek;
-        return `
-        <article class="card spell ${current ? 'current' : ''}">
+      <div class="page-head"><div><h2>Spelling words</h2><p>Next test on top.</p></div></div>
+      ${upcoming.length ? '' : '<p class="hint" style="margin:-4px 2px 12px">No upcoming tests posted yet.</p>'}
+      ${ordered.map((s, i) => {
+        const next = s.id === nextId;
+        const countdown = s.test_date ? testLabel(s.test_date) : '';
+        const headline = s.test_date ? `Test ${fmtDay(parseDate(s.test_date))}` : `Week of ${weekRange(s.week_of)}`;
+        const pastLabel = i === upcoming.length && upcoming.length ? '<p class="section-label">Past lists</p>' : '';
+        return `${pastLabel}
+        <article class="card spell ${next ? 'current' : ''}">
           <div class="spell-head">
             <div>
-              ${current ? '<span class="chip chip-volunteer">This week</span>' : ''}
-              <p class="spell-date" style="margin-top:${current ? '8px' : '0'}">${esc(weekRange(s.week_of))}</p>
+              ${next ? `<span class="chip chip-volunteer">Up next${countdown ? ' · ' + esc(countdown) : ''}</span>` : ''}
+              <p class="spell-date" style="margin-top:${next ? '8px' : '0'}">${esc(headline)}</p>
               ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
             </div>
             ${canEdit(s) ? `<button class="btn btn-danger btn-small" data-action="del-spell" data-id="${esc(s.id)}">Delete</button>` : ''}
           </div>
           ${s.words && s.words.length ? `<div class="words">${s.words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>` : ''}
+          ${s.challenge_words && s.challenge_words.length ? `
+            <p class="words-label">Challenge words</p>
+            <div class="words challenge">${s.challenge_words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>` : ''}
           ${s.notes ? `<p class="details">${linkify(s.notes)}</p>` : ''}
           ${s.photo_path ? `<div class="photo-loading" data-photo="${esc(s.photo_path)}">Loading photo…</div>` : ''}
           ${s.created_by_name ? `<p class="by">Added by ${esc(s.created_by_name)}</p>` : ''}
@@ -490,35 +517,176 @@
     } catch { return file; }
   }
 
-  function addSpellingSheet() {
+  const filledNote = (p) => (p && p._filled ? `<div class="filled-note"><strong>Filled in for you.</strong> Check it over, fix anything that's off, then post.</div>` : '');
+
+  function addSpellingSheet(p = {}, photoFile = null) {
+    let attached = photoFile;
+    const words = (p.words || []).join(', ');
+    const challenge = (p.challenge_words || []).join(', ');
     openSheet(`
-      <h2>New spelling list</h2>
+      <h2>Spelling list</h2>
+      ${filledNote(p)}
       <form id="sheetForm">
-        <label class="field"><span>Week of</span><input class="input" type="date" name="week_of" required value="${isoDate(mondayOf(new Date()))}"></label>
-        <label class="field"><span>Title <small>(optional)</small></span><input class="input" name="title" maxlength="120" placeholder="e.g. Unit 5 — long e"></label>
-        <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="One per line, or separated by commas"></textarea>
-          <p class="hint">Or skip typing and just add a photo below.</p></label>
-        <label class="field"><span>Photo of the list <small>(optional)</small></span><input class="input" type="file" name="photo" accept="image/*"></label>
-        <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Test day, challenge words, tips"></textarea></label>
+        <label class="field ${p._filled && !p.test_date ? 'needs' : ''}"><span>Test day</span><input class="input" type="date" name="test_date" required value="${esc(p.test_date || '')}">
+          ${p._filled && !p.test_date ? '<p class="hint">Couldn’t find the test day. Pick it here.</p>' : ''}</label>
+        <label class="field"><span>Unit / pattern <small>(optional)</small></span><input class="input" name="title" maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Unit 5 — long e"></label>
+        <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="Separated by commas or one per line">${esc(words)}</textarea></label>
+        <label class="field"><span>Challenge words <small>(optional)</small></span><input class="input" name="challenge_words" maxlength="500" value="${esc(challenge)}" placeholder="e.g. neighbor, celebrate"></label>
+        <div class="field"><span>Photo of the sheet <small>(optional)</small></span>
+          <div id="photoSlot">${attached ? `<div class="attached">📷 Photo attached <button type="button" class="link-btn inline" data-action="drop-photo">Remove</button></div>` : '<input class="input" type="file" name="photo" accept="image/*">'}</div>
+        </div>
+        <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Practice sheet due, tips, anything else">${esc(p.notes || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Post list</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
         </div>
       </form>`, async (fd) => {
-      const words = fd.get('words').split(/[\n,]+/).map((w) => w.trim()).filter(Boolean).slice(0, 60);
+      const list = (v) => [...new Set(String(v || '').split(/[\n,]+/).map((w) => w.trim()).filter(Boolean))];
+      const w = list(fd.get('words')).slice(0, 60);
       const raw = fd.get('photo');
-      const hasPhoto = raw && raw.size > 0;
-      if (!words.length && !hasPhoto) throw new Error('Add some words or a photo.');
-      const photo = hasPhoto ? await shrinkImage(raw) : null;
+      const file = attached || (raw && raw.size > 0 ? raw : null);
+      if (!w.length && !file) throw new Error('Add some words or a photo.');
+      const photo = file ? await shrinkImage(file) : null;
+      const testDate = fd.get('test_date');
       await api.addSpelling({
-        week_of: fd.get('week_of'),
+        test_date: testDate,
+        week_of: isoDate(mondayOf(parseDate(testDate))),
         title: fd.get('title').trim() || null,
-        words,
+        words: w,
+        challenge_words: list(fd.get('challenge_words')).slice(0, 20),
         notes: fd.get('notes').trim() || null,
       }, photo);
       state.tab = 'spelling';
       toast('Spelling list posted');
     });
+    const slot = $('#photoSlot');
+    if (slot) slot.addEventListener('click', (e) => {
+      if (e.target.closest('[data-action="drop-photo"]')) {
+        e.stopPropagation(); attached = null;
+        slot.innerHTML = '<input class="input" type="file" name="photo" accept="image/*">';
+      }
+    });
+  }
+
+  /* ---------------- quick add: talk, type or snap ---------------- */
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognizer = null;
+
+  function quickAddSheet() {
+    const canTalk = !!SpeechRec;
+    openSheet(`
+      <h2>What are we adding?</h2>
+      <p class="qa-sub">Say it like you'd text it. The app sorts out if it's spelling or an event.</p>
+      ${canTalk ? `
+        <div class="qa-mic">
+          <button type="button" class="mic" data-action="mic" aria-label="Tap to talk">${ICON.mic}</button>
+          <p id="micStatus">Tap to talk</p>
+        </div>` : ''}
+      <textarea id="qaText" class="input qa-text" placeholder="${canTalk ? 'Or type it here…' : 'Tap the 🎤 on your keyboard and talk, or type it…'}"></textarea>
+      <button type="button" class="btn btn-primary" data-action="qa-go" style="margin-top:12px">Fill it in</button>
+      <div class="qa-or"><span>or</span></div>
+      <label class="btn btn-yellow qa-photo">${ICON.camera} Snap the paper
+        <input type="file" id="qaPhoto" accept="image/*" hidden>
+      </label>
+      <p class="hint" style="text-align:center">Works great for the Friday-folder spelling sheet or a flyer.</p>
+      <div id="qaBusy" class="qa-busy" hidden><div class="bar"><span></span></div><p>Reading the paper…</p></div>
+      <div class="qa-examples">
+        <p class="words-label">Try saying</p>
+        <p>“Spelling test Thursday the 12th. Words are rain, play, gate, train. Challenge words neighbor and celebrate.”</p>
+        <p>“PTO meeting Friday at 6:30 in the library.”</p>
+        <p>“Field trip to the Children’s Museum November 20th. Drop off at the east doors by 8:45.”</p>
+      </div>
+      <div class="qa-manual">Rather fill it in yourself?
+        <button type="button" class="link-btn inline" data-action="manual-event">Event</button> ·
+        <button type="button" class="link-btn inline" data-action="manual-spelling">Spelling</button>
+      </div>`);
+    const photo = $('#qaPhoto');
+    photo.addEventListener('change', () => { if (photo.files && photo.files[0]) readPhoto(photo.files[0]); });
+  }
+
+  function toggleMic() {
+    const btn = $('.mic'); const status = $('#micStatus'); const box = $('#qaText');
+    if (recognizer) { recognizer.stop(); return; }
+    try {
+      recognizer = new SpeechRec();
+      recognizer.lang = 'en-US';
+      recognizer.continuous = true;
+      recognizer.interimResults = true;
+      const before = box.value ? box.value.trim() + ' ' : '';
+      recognizer.onresult = (e) => {
+        let txt = '';
+        for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+        box.value = before + txt.trim();
+      };
+      recognizer.onerror = (e) => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Microphone is blocked. Use the 🎤 on your keyboard instead.');
+      };
+      recognizer.onend = () => {
+        recognizer = null;
+        if (btn) btn.classList.remove('on');
+        if (status) status.textContent = box.value.trim() ? 'Got it. Tap “Fill it in”, or tap to add more.' : 'Tap to talk';
+      };
+      recognizer.start();
+      btn.classList.add('on');
+      status.textContent = 'Listening… tap again when you’re done';
+    } catch {
+      recognizer = null;
+      toast('Talking isn’t available here. Use the 🎤 on your keyboard.');
+      box.focus();
+    }
+  }
+
+  function stopMic() { if (recognizer) { try { recognizer.abort(); } catch {} recognizer = null; } }
+
+  function openFilled(r, photoFile) {
+    stopMic();
+    if (r.type === 'spelling') addSpellingSheet({ ...r, _filled: true }, photoFile || null);
+    else addEventSheet({ ...r, _filled: true });
+  }
+
+  function quickGo() {
+    const text = ($('#qaText').value || '').trim();
+    if (!text) { toast('Say or type what you want to add first.'); return; }
+    openFilled(window.MMQuick.parse(text));
+  }
+
+  // Free text reading that runs on the phone (Tesseract). Downloaded only
+  // the first time someone snaps a photo.
+  let tesseractLoading = null;
+  function loadTesseract() {
+    if (window.Tesseract) return Promise.resolve();
+    if (!tesseractLoading) {
+      tesseractLoading = new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        sc.onload = res; sc.onerror = () => { tesseractLoading = null; rej(new Error('load')); };
+        document.head.appendChild(sc);
+      });
+    }
+    return tesseractLoading;
+  }
+
+  async function readPhoto(file) {
+    stopMic();
+    const busy = $('#qaBusy'); const bar = busy && busy.querySelector('.bar span'); const label = busy && busy.querySelector('p');
+    if (busy) busy.hidden = false;
+    const setPct = (p, msg) => { if (bar) bar.style.width = Math.round(p * 100) + '%'; if (label && msg) label.textContent = msg; };
+    setPct(0.05, 'Getting the reader ready…');
+    const small = await shrinkImage(file, 2000);
+    try {
+      await loadTesseract();
+      setPct(0.15, 'Reading the paper…');
+      const { data } = await window.Tesseract.recognize(small, 'eng', {
+        logger: (m) => { if (m.status === 'recognizing text') setPct(0.15 + m.progress * 0.85, `Reading the paper… ${Math.round(m.progress * 100)}%`); },
+      });
+      const text = (data && data.text) || '';
+      if (text.replace(/\W/g, '').length < 6) throw new Error('empty');
+      const r = window.MMQuick.parse(text, { fromPhoto: true });
+      openFilled(r, r.type === 'spelling' ? small : null);
+    } catch {
+      toast('Couldn’t read that one. The photo is attached; add the words if you can.');
+      openFilled({ type: 'spelling' }, small);
+    }
   }
 
   /* ---------------- members ---------------- */
@@ -592,7 +760,7 @@
     const wrap = document.createElement('div');
     wrap.className = 'sheet-backdrop';
     wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
-    wrap.addEventListener('click', (e) => { if (e.target === wrap) closeSheet(); });
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) { stopMic(); closeSheet(); } });
     document.body.appendChild(wrap);
     document.body.style.overflow = 'hidden';
     const form = wrap.querySelector('#sheetForm');
@@ -631,12 +799,15 @@
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
       else if (a === 'toggle-past') { state.showPast = !state.showPast; renderView(); }
       else if (a === 'add') {
-        if (state.tab === 'events') addEventSheet();
-        else if (state.tab === 'spelling') addSpellingSheet();
-        else if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
+        if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
+        else if (state.tab !== 'members') quickAddSheet();
       }
       else if (a === 'account') accountSheet();
-      else if (a === 'close-sheet') closeSheet();
+      else if (a === 'close-sheet') { stopMic(); closeSheet(); }
+      else if (a === 'mic') toggleMic();
+      else if (a === 'qa-go') quickGo();
+      else if (a === 'manual-event') { stopMic(); addEventSheet(); }
+      else if (a === 'manual-spelling') { stopMic(); addSpellingSheet(); }
       else if (a === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; closeSheet(); }
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
       else if (a === 'signout') { closeSheet(); await api.signOut(); state.me = null; state.signin = { step: 'email', email: '' }; renderSignIn(); }

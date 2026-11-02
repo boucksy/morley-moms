@@ -272,3 +272,39 @@ textarea.input { min-height: 90px; resize: vertical; }
 @media (min-width: 700px) {
   .content { padding-top: 28px; }
 }
+
+/* ---------- v2: spelling extras ---------- */
+.words-label { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin: 16px 0 0; }
+.words.challenge { margin-top: 8px; }
+.words.challenge .word { background: var(--white); border-style: dashed; border-color: var(--blue); color: var(--blue); }
+.filled-note { background: var(--blue-soft); color: var(--ink); border-radius: 12px; padding: 10px 12px; font-size: 14px; margin: -6px 0 16px; }
+.field.needs .input { border-color: var(--yellow); background: var(--yellow-soft); }
+.attached { display: flex; align-items: center; gap: 10px; font-weight: 700; padding: 12px 14px; border-radius: 14px; background: var(--bg); }
+.link-btn.inline { width: auto; padding: 0; display: inline; }
+
+/* ---------- v2: quick add ---------- */
+.qa-sub { color: var(--ink-2); margin: -8px 0 18px; font-size: 15px; }
+.qa-mic { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 16px; }
+.mic {
+  width: 96px; height: 96px; border-radius: 50%; border: 0;
+  background: var(--blue); color: var(--white);
+  display: grid; place-items: center;
+  box-shadow: 0 10px 24px rgba(31,75,201,.35);
+  transition: transform .1s, background .15s;
+}
+.mic svg { width: 42px; height: 42px; }
+.mic:active { transform: scale(.96); }
+.mic.on { background: var(--danger); animation: pulse 1.2s ease-in-out infinite; }
+#micStatus { font-weight: 700; color: var(--ink-2); text-align: center; }
+.qa-text { min-height: 110px; font-size: 17px; }
+.qa-or { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-weight: 700; margin: 16px 0; font-size: 14px; }
+.qa-or::before, .qa-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.qa-photo { cursor: pointer; }
+.qa-busy { margin-top: 14px; text-align: center; font-weight: 700; color: var(--ink-2); }
+.qa-busy .bar { height: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; margin-bottom: 8px; }
+.qa-busy .bar span { display: block; height: 100%; width: 0; background: var(--yellow); transition: width .25s; }
+.qa-examples { margin-top: 20px; padding: 12px 14px; border-radius: 14px; background: var(--bg); font-size: 14px; color: var(--ink-2); }
+.qa-examples .words-label { margin: 0 0 6px; }
+.qa-examples p + p { margin-top: 6px; }
+.qa-manual { text-align: center; margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(194,49,43,.45); } 50% { box-shadow: 0 0 0 14px rgba(194,49,43,0); } }

@@ -1,11 +1,12 @@
 // Morley Moms service worker: makes the app installable and lets the
 // app shell open quickly. It never caches group data from Supabase.
-const CACHE = 'mm-shell-v1';
+const CACHE = 'mm-shell-v2';
 const SHELL = [
   './',
   'index.html',
   'styles.css',
   'app.js',
+  'quickadd.js',
   'config.js',
   'manifest.webmanifest',
   'icons/icon-192.png',

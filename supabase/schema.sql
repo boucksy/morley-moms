@@ -80,6 +80,11 @@ create table if not exists public.spelling_lists (
 );
 create index if not exists spelling_week_idx on public.spelling_lists (week_of desc);
 
+-- v2: the test day (it moves around) and separate challenge words
+alter table public.spelling_lists add column if not exists test_date date;
+alter table public.spelling_lists add column if not exists challenge_words text[] not null default '{}';
+create index if not exists spelling_test_idx on public.spelling_lists (test_date desc);
+
 drop trigger if exists events_author on public.events;
 create trigger events_author before insert on public.events
   for each row execute function public.set_author();

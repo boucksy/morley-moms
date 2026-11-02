@@ -2,7 +2,14 @@
 
 A private, invite-only app for the Morley Moms. It installs on iPhone and Android from a link (no app stores) and only approved members can see anything.
 
-**Version 1 includes:** email-code sign-in, events (PTO, school, volunteer, moms' outings, kids), drop-off/pickup details, "add to my calendar," weekly spelling lists with photos, and a members list you control.
+**Includes:** email-code sign-in; **Quick Add** (talk, type or snap a photo and the app fills in the form); events (PTO, school, volunteer, moms' outings, kids) with drop-off/pickup details and "add to calendar"; spelling lists with the test day, words, challenge words and a photo; and a members list you control.
+
+### How Quick Add works
+1. Tap **+**.
+2. Tap the microphone and say it, type it, or tap **Snap the paper**.
+3. The app decides whether it's a spelling list or an event, fills in the form (test day, words, challenge words, date, time, place, drop-off/pickup), and the mom checks it and taps **Post**.
+
+Everything runs on the phone, for free. The photo reader (Tesseract) downloads once, a few MB, the first time someone snaps a photo. It reads printed sheets well; handwriting is hit-or-miss, so the photo is always attached too. If the mic button isn't available on a phone, the keyboard's 🎤 works the same way.
 
 **Cost:** about $12/year for a domain. Everything else runs on free tiers.
 
@@ -117,6 +124,8 @@ Note: backups include all the text data. Photos stay in Supabase Storage and are
 - **Anyone else:** sees only the sign-in screen.
 
 ## Ideas for next versions
+- Spelling practice mode (the phone reads each word aloud)
+- Optional AI photo reader for handwritten sheets (small cost)
 - Halloween walking route on a map
 - Volunteer / supply sign-up slots ("I'll bring juice boxes")
 - Donation drives
@@ -125,6 +134,7 @@ Note: backups include all the text data. Photos stay in Supabase Storage and are
 
 ## Files
 - `index.html`, `styles.css`, `app.js`: the app
+- `quickadd.js`: turns what moms say or snap into a filled-in form
 - `config.js`: your Supabase connection (public-safe values only)
 - `manifest.webmanifest`, `sw.js`, `icons/`: make it installable
 - `supabase/schema.sql`: database tables and security rules
