@@ -1,6 +1,6 @@
-// Morley Moms — reads a photo of a school paper (spelling list, flyer, ticket)
-// with a vision AI model and returns what's printed on it. The phone then
-// fills in the form for a mom to check.
+// Morley Moms — reads a photo of a school paper (spelling list, flyer, ticket),
+// or a typed/spoken note, with an AI model and returns the pieces (what it is,
+// the date, the time, where). The phone then fills in the form for a mom to check.
 //
 // Only signed-in members can use it. The key lives in Supabase secrets,
 // never in the app's public code.
@@ -20,24 +20,40 @@ const json = (body: unknown, status = 200) =>
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
-const PROMPT = (today: string) => `This is a photo of a paper a parent got from their child's elementary school. Today is ${today}.
-The photo may be sideways or upside down, and the paper may have handwriting, check marks, X's or scribbles from a child on top of it. Ignore all of that.
+const RULES = (today: string) => `Today is ${today}.
 
 Reply with ONLY a JSON object, no other text:
 {
-  "kind": "spelling" | "other",
-  "title": string or null,      // e.g. "Unit 3 Lesson 10" for a spelling list, otherwise the event or flyer title
-  "test_date": "YYYY-MM-DD" or null,   // spelling lists only: the printed or written test date
-  "words": [string],            // spelling lists only: every PRINTED spelling word, once each, in reading order, lower case
-  "challenge_words": [string],  // spelling lists only: only the words listed under "Challenge Words"
-  "text": string                // all the clearly printed text on the paper, in reading order
+  "kind": "spelling" | "event",
+  "title": string or null,
+  "test_date": "YYYY-MM-DD" or null,
+  "words": [string],
+  "challenge_words": [string],
+  "event": {
+    "title": string or null,
+    "category": "pto" | "school" | "noschool" | "volunteer" | "social" | "kids" | "rides" | null,
+    "date": "YYYY-MM-DD" or null,
+    "end_date": "YYYY-MM-DD" or null,
+    "time": "HH:MM" or null,
+    "end_time": "HH:MM" or null,
+    "location": string or null,
+    "details": string or null
+  },
+  "text": string
 }
 
 Rules:
-- Only include what is actually on the paper. Never guess or add words, dates or details.
-- Do not include the printed instructions or explanations (like "Students will change...") as words.
-- If a date is missing or unreadable, use null.
-- If it is not a spelling list, use "other", leave words and challenge_words empty, and put everything in "text".`;
+- Only include what is actually stated. Never guess or add dates, times, places or details.
+- Spelling list: use kind "spelling" and fill title (like "Unit 3 Lesson 10"), test_date, words (every spelling word once, in order, lower case) and challenge_words (only those under "Challenge Words"). Leave event fields null.
+- Anything else: use kind "event" and fill the event fields; leave words empty.
+- event.title: a short name (2 to 6 words) using words from the text, like "Turkey disguise due" or "PTO meeting". Not a full sentence.
+- event.category: pto = PTO meetings and events; school = school assignments, deadlines, activities; noschool = days with no school; volunteer = asks for volunteers, donations or supplies; social = moms' outings; kids = kids' clubs or playdates; rides = pickups and drop-offs; null if unsure.
+- Dates: turn weekdays and "next Tuesday" into the real date relative to today. A due date is the event's date. Use null if no date is stated.
+- event.details: only useful extra facts that don't fit the other fields (what to bring, sign-up links, instructions), in at most two short sentences. null if there is nothing extra. Do not repeat the title, date, time or place.
+- text: the clearly printed or spoken text, in reading order.`;
+
+const PHOTO_INTRO = `This is a photo of a paper a parent got from their child's elementary school. It may be sideways or upside down, and may have handwriting, check marks, X's or scribbles from a child on top of it. Ignore all of that. Ignore greetings like "Dear Families".`;
+const TEXT_INTRO = `This is a note a parent typed or spoke aloud about something at their child's elementary school. The speech-to-text may have small mistakes.`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -53,21 +69,33 @@ Deno.serve(async (req) => {
   const { data: isMember, error: memberErr } = await sb.rpc("is_member");
   if (memberErr || isMember !== true) return json({ error: "Members only" }, 403);
 
-  // 2) Get the photo
+  // 2) Get the photo or the text
   let form: FormData;
-  try { form = await req.formData(); } catch { return json({ error: "No photo received" }, 400); }
+  try { form = await req.formData(); } catch { return json({ error: "Nothing received" }, 400); }
   const photo = form.get("photo");
-  if (!(photo instanceof File) || photo.size === 0) return json({ error: "No photo received" }, 400);
-  if (photo.size > MAX_BYTES) return json({ error: "That photo is too big" }, 413);
+  const note = form.get("text");
+  const hasPhoto = photo instanceof File && photo.size > 0;
+  const hasText = typeof note === "string" && note.trim().length > 0;
+  if (!hasPhoto && !hasText) return json({ error: "Nothing received" }, 400);
+  if (hasPhoto && (photo as File).size > MAX_BYTES) return json({ error: "That photo is too big" }, 413);
+  if (hasText && (note as string).length > 6000) return json({ error: "That's too long" }, 413);
 
   const key = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!key) return json({ error: "Photo reading isn't set up yet (missing ANTHROPIC_API_KEY)" }, 500);
+  if (!key) return json({ error: "AI reading isn't set up yet (missing ANTHROPIC_API_KEY)" }, 500);
 
   // 3) Ask the model
-  const bytes = new Uint8Array(await photo.arrayBuffer());
-  let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  const mediaType = /png|webp|gif/.test(photo.type) ? photo.type : "image/jpeg";
   const today = new Date().toISOString().slice(0, 10);
+  const content: unknown[] = [];
+  if (hasPhoto) {
+    const f = photo as File;
+    const bytes = new Uint8Array(await f.arrayBuffer());
+    let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const mediaType = /png|webp|gif/.test(f.type) ? f.type : "image/jpeg";
+    content.push({ type: "image", source: { type: "base64", media_type: mediaType, data: btoa(bin) } });
+    content.push({ type: "text", text: PHOTO_INTRO + "\n\n" + RULES(today) });
+  } else {
+    content.push({ type: "text", text: TEXT_INTRO + "\n\nThe note:\n\"\"\"\n" + (note as string).trim() + "\n\"\"\"\n\n" + RULES(today) });
+  }
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -75,13 +103,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       model: Deno.env.get("VISION_MODEL") ?? "claude-haiku-5-5",
       max_tokens: 1500,
-      messages: [{
-        role: "user",
-        content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: btoa(bin) } },
-          { type: "text", text: PROMPT(today) },
-        ],
-      }],
+      messages: [{ role: "user", content }],
     }),
   });
   if (!res.ok) {
@@ -95,13 +117,27 @@ Deno.serve(async (req) => {
   catch { return json({ error: "Couldn't read that photo. Try again." }, 502); }
 
   const list = (a: unknown) => (Array.isArray(a) ? a.map((w) => String(w).trim().toLowerCase()).filter(Boolean) : []);
-  const date = typeof out.test_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(out.test_date) ? out.test_date : null;
+  const isoDay = (d: unknown) => (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null);
+  const hm = (t: unknown) => (typeof t === "string" && /^\d{2}:\d{2}$/.test(t) ? t : null);
+  const str = (v: unknown) => (v ? String(v).trim() || null : null);
+  const CATS = ["pto", "school", "noschool", "volunteer", "social", "kids", "rides"];
+  const ev = out.event ?? {};
   return json({
-    kind: out.kind === "spelling" ? "spelling" : "other",
-    title: out.title ? String(out.title).trim() : null,
-    test_date: date,
+    kind: out.kind === "spelling" ? "spelling" : "event",
+    title: str(out.title),
+    test_date: isoDay(out.test_date),
     words: list(out.words),
     challenge_words: list(out.challenge_words),
+    event: {
+      title: str(ev.title),
+      category: CATS.includes(ev.category) ? ev.category : null,
+      date: isoDay(ev.date),
+      end_date: isoDay(ev.end_date),
+      time: hm(ev.time),
+      end_time: hm(ev.end_time),
+      location: str(ev.location),
+      details: str(ev.details),
+    },
     text: String(out.text ?? "").trim(),
   });
 });

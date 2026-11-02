@@ -425,3 +425,7 @@ input[type="date"].input, input[type="time"].input { min-height: 52px; }
 .qa-paste { margin-top: 8px; }
 
 [hidden] { display: none !important; }
+
+/* The "Until" date only shows once a repeat day is picked. */
+.until-field{display:none}
+.seg:has(input[name=repeat_days]:checked) + .until-field{display:block}

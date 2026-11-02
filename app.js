@@ -116,6 +116,7 @@
       async photoUrl(path) { return path; },
       async transcribe() { throw new Error('Voice on iPhone works once the app is connected (see setup step 8). Type it for now.'); },
       async readPhoto() { throw new Error('demo'); },
+      async readNote() { throw new Error('demo'); },
       async listClassrooms() { return delay([...db.classrooms].sort((a, b) => a.name.localeCompare(b.name))); },
       async saveClassroom(row, id) {
         const clash = db.classrooms.find((c) => c.name.toLowerCase() === row.name.toLowerCase() && c.id !== id);
@@ -195,6 +196,13 @@
         const { data, error } = await sb.functions.invoke('transcribe', { body: fd });
         if (error) throw new Error('Couldn\u2019t catch that. Tap the mic and try again.');
         return (data && data.text) || '';
+      },
+      async readNote(text) {
+        const fd = new FormData();
+        fd.append('text', text);
+        const { data, error } = await sb.functions.invoke('read-photo', { body: fd });
+        if (error || !data || data.error) throw new Error('ai');
+        return data;
       },
       async readPhoto(file) {
         const fd = new FormData();
@@ -639,7 +647,7 @@
         </div>
         <div class="field" ${series ? 'hidden' : ''}><span>Repeats every week? <small>(optional)</small></span>
           <div class="seg">${['mon', 'tue', 'wed', 'thu', 'fri'].map((k) => `<label><input type="checkbox" name="repeat_days" value="${k}" ${reps.includes(k) ? 'checked' : ''}><span>${DOW_SHORT[k]}</span></label>`).join('')}</div>
-          <label class="field" style="margin:10px 0 0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
+          <label class="field until-field" style="margin:10px 0 0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
         </div>
         <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. Morley Library"></label>
         <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
@@ -1146,7 +1154,25 @@
     photo.addEventListener('change', () => { if (photo.files && photo.files[0]) readPhoto(photo.files[0]); });
   }
 
+  // Keep the screen from dimming and locking while the mic is on or the
+  // recording is being turned into text.
+  let wakeLock = null;
+  async function keepAwake(on) {
+    try {
+      if (on) {
+        if (!wakeLock && navigator.wakeLock) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        }
+      } else if (wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+    } catch { wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && (recognizer || recorder)) keepAwake(true);
+  });
+
   function micUi(mode, text) {
+    keepAwake(mode === 'listening' || mode === 'working');
     const btn = $('.mic'); const status = $('#micStatus');
     if (btn) { btn.classList.toggle('on', mode === 'listening'); btn.classList.toggle('busy', mode === 'working'); btn.disabled = mode === 'working'; }
     if (status) status.textContent = text;
@@ -1240,6 +1266,7 @@
   }
 
   function stopMic() {
+    keepAwake(false);
     if (recognizer) { const r = recognizer; recognizer = null; try { r.abort(); } catch {} }
     if (recorder) { const r = recorder; r.onstop = null; recorder = null; clearInterval(recTimer); try { r.stop(); r.stream.getTracks().forEach((t) => t.stop()); } catch {} }
   }
@@ -1271,10 +1298,33 @@
     }
   }
 
-  function quickGo() {
+  // Turn the AI reader's answer into a filled-in form.
+  function aiToForm(v) {
+    if (v.kind === 'spelling' && v.words && v.words.length) {
+      return { type: 'spelling', title: v.title || undefined, test_date: v.test_date || null, words: v.words, challenge_words: v.challenge_words || [] };
+    }
+    const e = v.event || {};
+    if (!e.title && !e.date) return null;
+    const out = { type: 'event', title: e.title || '', date: e.date || null, end_date: e.end_date || '', time: e.time || '', end_time: e.end_time || '', location: e.location || '', pickup_dropoff: '', details: e.details || '' };
+    if (e.category) out.category = e.category;
+    return out;
+  }
+
+  async function quickGo() {
     const text = ($('#qaText').value || '').trim();
     if (!text) { toast('Say or type what you want to add first.'); return; }
-    openFilled(window.MMQuick.parse(text));
+    const local = window.MMQuick.parse(text);
+    // Events and spelling lists read better with the AI reader (when connected).
+    // Rotation days, specials and pickups keep the exact on-phone rules.
+    if (api.live && (local.type === 'spelling' || (local.type === 'event' && local.category !== 'rides'))) {
+      micUi('working', 'Filling it in…');
+      try {
+        const form = aiToForm(await api.readNote(text));
+        if (form) { openFilled(form); return; }
+      } catch { /* fall back to the on-phone reader */ }
+      micUi('idle', 'Tap to talk');
+    }
+    openFilled(local);
   }
 
   // Free text reading that runs on the phone (Tesseract). Downloaded only
@@ -1324,10 +1374,8 @@
     try {
       setPct(0.2, 'Reading the paper…');
       const v = await api.readPhoto(small);
-      if (v.kind === 'spelling' && v.words.length) {
-        openFilled({ type: 'spelling', title: v.title || undefined, test_date: v.test_date || null, words: v.words, challenge_words: v.challenge_words }, small);
-        return;
-      }
+      const form = aiToForm(v);
+      if (form) { openFilled(form, form.type === 'spelling' ? small : null); return; }
       if (v.text && v.text.replace(/\W/g, '').length >= 6) {
         const r = window.MMQuick.parse(v.text, { fromPhoto: true });
         openFilled(r, r.type === 'spelling' ? small : null);
