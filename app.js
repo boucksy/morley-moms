@@ -273,7 +273,7 @@
     app.innerHTML = `
       <div class="signin">
         <div class="signin-hero">
-          <span class="logo-mark big">MM</span>
+          <span class="logo-mark big">M</span>
           <h1>Morley Moms</h1>
         </div>
         <div class="signin-card">${card}</div>
@@ -320,7 +320,7 @@
   function renderNotMember() {
     $('#app').innerHTML = `
       <div class="signin">
-        <div class="signin-hero"><span class="logo-mark big">MM</span><h1>Almost there</h1></div>
+        <div class="signin-hero"><span class="logo-mark big">M</span><h1>Almost there</h1></div>
         <div class="signin-card">
           <h2>You're not on the list yet</h2>
           <p class="sub">This app is just for Morley Moms. Ask ${esc(cfg.ADMIN_CONTACT || 'the group admin')} to add your email, then sign in again.</p>
@@ -356,7 +356,7 @@
     $('#app').innerHTML = `
       <div class="shell">
         <header class="topbar">
-          <span class="logo-mark">MM</span>
+          <span class="logo-mark">M</span>
           <h1>Morley Moms</h1>
           <button class="avatar" data-action="account" aria-label="Your account">${esc(initials(state.me.display_name || state.me.email))}</button>
         </header>
