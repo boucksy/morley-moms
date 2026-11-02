@@ -1350,7 +1350,7 @@
       micUi('working', 'Filling it in…');
       try {
         const form = aiToForm(await api.readNote(text));
-        if (form) { openFilled(form); return; }
+        if (form) { if (form.type === 'event' && !form.title) form.title = local.title || ''; openFilled(form); return; }
       } catch { toast('The AI reader isn’t answering, so I used the basic one. Check the title.'); }
       micUi('idle', 'Tap to talk');
     }
@@ -1405,7 +1405,10 @@
       setPct(0.2, 'Reading the paper…');
       const v = await api.readPhoto(small);
       const form = aiToForm(v);
-      if (form) { openFilled(form, form.type === 'spelling' ? small : null); return; }
+      if (form) {
+        if (form.type === 'event' && !form.title && v.text) form.title = window.MMQuick.parse(v.text, { fromPhoto: true, force: 'event' }).title || '';
+        openFilled(form, form.type === 'spelling' ? small : null); return;
+      }
       if (v.text && v.text.replace(/\W/g, '').length >= 6) {
         const r = window.MMQuick.parse(v.text, { fromPhoto: true });
         openFilled(r, r.type === 'spelling' ? small : null);
