@@ -1,0 +1,66 @@
+# Weekly backup of the group's data into a SEPARATE PRIVATE repo.
+# The backup never touches this public repo, and nothing from it is
+# printed in the (public) Actions log.
+#
+# Needs three secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL  – Supabase → Connect → "Session pooler" connection string
+#   BACKUP_REPO      – e.g. yourname/morley-moms-backups (must be PRIVATE)
+#   BACKUP_TOKEN     – fine-grained token with Contents: read & write on that repo only
+# If they aren't set yet, this job just skips.
+name: Weekly data backup
+
+on:
+  schedule:
+    - cron: "41 8 * * 0"   # Sunday early morning
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_REPO: ${{ secrets.BACKUP_REPO }}
+      BACKUP_TOKEN: ${{ secrets.BACKUP_TOKEN }}
+    steps:
+      - name: Check setup
+        id: check
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_REPO" ] || [ -z "$BACKUP_TOKEN" ]; then
+            echo "Backup secrets not set yet; skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.check.outputs.ready == 'true'
+        with:
+          version: latest
+
+      - name: Export the data
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          mkdir -p out
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f out/schema.sql > /dev/null
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f out/data.sql --data-only --use-copy > /dev/null
+          echo "Export finished."
+
+      - name: Save to the private backup repo
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          git clone --quiet "https://x-access-token:${BACKUP_TOKEN}@github.com/${BACKUP_REPO}.git" backup
+          cp out/*.sql backup/
+          cd backup
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes since last backup."
+          else
+            git commit --quiet -m "Backup $(date -u +%F)"
+            git push --quiet
+            echo "Backup saved."
+          fi

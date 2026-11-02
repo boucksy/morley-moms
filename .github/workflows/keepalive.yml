@@ -1,0 +1,50 @@
+# Keeps the free Supabase project from pausing during quiet weeks
+# (like summer break). Runs every 3 days. Nobody has to do anything.
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: "17 14 */3 * *"   # around 8–9am Lincoln time, every 3 days
+  workflow_dispatch:           # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::error::Add SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          curl --fail --silent --show-error --max-time 30 \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/keepalive" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' > /dev/null
+          echo "Supabase answered. All good."
+
+      # GitHub switches off scheduled jobs in public repos after 60 days
+      # with no commits. If the repo has been quiet for 45+ days, make one
+      # tiny commit so this job keeps itself running.
+      - uses: actions/checkout@v4
+      - name: Keep this schedule switched on
+        run: |
+          last=$(git log -1 --format=%ct)
+          now=$(date +%s)
+          if [ $(( now - last )) -gt $(( 45 * 86400 )) ]; then
+            date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/last-keepalive.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/last-keepalive.txt
+            git commit -m "chore: keepalive"
+            git push
+          else
+            echo "Repo has recent activity; no commit needed."
+          fi
