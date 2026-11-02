@@ -117,6 +117,7 @@
       async transcribe() { throw new Error('Voice on iPhone works once the app is connected (see setup step 8). Type it for now.'); },
       async readPhoto() { throw new Error('demo'); },
       async readNote() { throw new Error('demo'); },
+      async cleanupOld() { return 0; },
       async listClassrooms() { return delay([...db.classrooms].sort((a, b) => a.name.localeCompare(b.name))); },
       async saveClassroom(row, id) {
         const clash = db.classrooms.find((c) => c.name.toLowerCase() === row.name.toLowerCase() && c.id !== id);
@@ -180,6 +181,24 @@
           row.photo_path = path;
         }
         ok(await sb.from('spelling_lists').update(row).eq('id', id));
+      },
+      // Removes events and spelling lists (and their photos) older than the cutoff.
+      // "No school" days are kept, because the Day 1–4 count depends on them.
+      async cleanupOld(cutoff) {
+        const day = (v) => (v ? String(v).slice(0, 10) : '');
+        const cut = isoDate(cutoff);
+        const evs = ok(await sb.from('events').select('id,category,starts_at,ends_at,repeat_days,repeat_until'));
+        const oldEvents = evs.filter((e) => e.category !== 'noschool' && (
+          (e.repeat_days && e.repeat_days.length) ? (e.repeat_until && e.repeat_until < cut)
+            : day(isoDate(new Date(e.ends_at || e.starts_at))) < cut)).map((e) => e.id);
+        if (oldEvents.length) ok(await sb.from('events').delete().in('id', oldEvents));
+        const sp = ok(await sb.from('spelling_lists').select('id,test_date,week_of,photo_path'));
+        const oldLists = sp.filter((l) => (l.test_date || l.week_of || '9999') < cut);
+        for (const l of oldLists) {
+          if (l.photo_path) await sb.storage.from(PHOTO_BUCKET).remove([l.photo_path]);
+          ok(await sb.from('spelling_lists').delete().eq('id', l.id));
+        }
+        return oldEvents.length + oldLists.length;
       },
       async deleteSpelling(row) {
         if (row.photo_path) await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path]);
@@ -364,12 +383,26 @@
     if (!state.me) { renderNotMember(); return; }
     renderShell();
     await refresh();
+    maybeCleanup();
     maybeInstallSheet();
     if (sharedText) {
       quickAddSheet();
       const box = $('#qaText'); if (box) box.value = sharedText;
       quickGo();
     }
+  }
+
+  // Once a day, when an admin opens the app, remove things that ended over 30 days ago.
+  async function maybeCleanup() {
+    if (!LIVE || !state.me || !state.me.is_admin) return;
+    const todayIso = isoDate(startOfToday());
+    try { if (localStorage.getItem('mm-cleanup') === todayIso) return; } catch {}
+    try {
+      const cutoff = startOfToday(); cutoff.setDate(cutoff.getDate() - 30);
+      const n = await api.cleanupOld(cutoff);
+      try { localStorage.setItem('mm-cleanup', todayIso); } catch {}
+      if (n) await refresh();
+    } catch { /* try again next time */ }
   }
 
   // One-time "put it on your home screen" nudge. Shows once per phone, or any
