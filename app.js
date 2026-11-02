@@ -221,6 +221,7 @@
     tab: 'events',
     filter: 'all',
     showPast: false,
+    weeksShown: 4,
     events: [],
     spelling: [],
     members: [],
@@ -468,31 +469,76 @@
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<p class="details">${linkify(ev.details)}</p>` : ''}
-          <div class="actions">
-            <button class="btn btn-ghost btn-small" data-action="ics" data-id="${esc(ev.id)}">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')} Add to calendar</button>
-            <button class="btn btn-ghost btn-small" data-action="edit-event" data-id="${esc(ev.id)}">${ICON.edit} Edit</button>
+          <div class="card-tools">
+            <button class="icon-btn" data-action="ics" data-id="${esc(ev.id)}" aria-label="Add to my calendar" title="Add to my calendar">${ICON.calendar.replace('<svg', '<svg width="20" height="20"')}</button>
+            <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" aria-label="Edit" title="Edit">${ICON.edit}</button>
           </div>
         </div>
       </article>`;
   }
 
+  // One card per day for weekly things (rides etc.), skipping no-school days.
+  function occurrencesOf(ev, from, off) {
+    const out = [];
+    const first = localDay(ev.starts_at);
+    const until = ev.repeat_until ? parseDate(ev.repeat_until) : null;
+    const s0 = new Date(ev.starts_at);
+    const e0 = ev.ends_at ? new Date(ev.ends_at) : null;
+    const d = new Date(Math.max(first, from));
+    for (let i = 0; i < 400; i++) {
+      if (until && d > until) break;
+      if (ev.repeat_days.includes(DOW[d.getDay()]) && !off.has(isoDate(d))) {
+        const st = new Date(d); st.setHours(s0.getHours(), s0.getMinutes(), 0, 0);
+        let en = null;
+        if (e0) { en = new Date(d); en.setHours(e0.getHours(), e0.getMinutes(), 0, 0); }
+        out.push({ ...ev, starts_at: st.toISOString(), ends_at: en ? en.toISOString() : null, repeat_days: null, repeat_until: null, _occ: true });
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  function weekHeading(monday) {
+    const thisMon = mondayOf(new Date());
+    const diff = Math.round((monday - thisMon) / (7 * 86400000));
+    const fri = new Date(monday); fri.setDate(fri.getDate() + 4);
+    const mon = (x) => x.toLocaleDateString(undefined, { month: 'short' });
+    const range = monday.getMonth() === fri.getMonth() ? `${mon(monday)} ${monday.getDate()}–${fri.getDate()}` : `${mon(monday)} ${monday.getDate()} – ${mon(fri)} ${fri.getDate()}`;
+    if (diff === 0) return `This week · ${range}`;
+    if (diff === 1) return `Next week · ${range}`;
+    return `Week of ${range}`;
+  }
+
   function eventsView() {
     const today = startOfToday();
+    const off = noSchoolDates();
     const match = (e) => state.filter === 'all' || e.category === state.filter;
-    const weekly = state.events.filter((e) => isRepeating(e) && match(e) && (!e.repeat_until || parseDate(e.repeat_until) >= today));
     const oneTime = state.events.filter((e) => !isRepeating(e) && match(e));
-    const upcoming = oneTime.filter((e) => lastDayOf(e) >= today);
+    const items = [
+      ...oneTime.filter((e) => lastDayOf(e) >= today),
+      ...state.events.filter((e) => isRepeating(e) && match(e)).flatMap((e) => occurrencesOf(e, today, off)),
+    ];
+    // Something already under way (like a break) is listed under this week.
+    const showDay = (e) => new Date(Math.max(localDay(e.starts_at), today));
+    items.sort((a, b) => showDay(a) - showDay(b) || new Date(a.starts_at) - new Date(b.starts_at) || (a.all_day ? -1 : 1));
+    const weeks = [];
+    for (const e of items) {
+      const key = isoDate(mondayOf(showDay(e)));
+      if (!weeks.length || weeks[weeks.length - 1].key !== key) weeks.push({ key, items: [] });
+      weeks[weeks.length - 1].items.push(e);
+    }
+    const shown = weeks.slice(0, state.weeksShown || 4);
     const past = oneTime.filter((e) => lastDayOf(e) < today).reverse().slice(0, 10);
     const filters = [{ id: 'all', label: 'All' }, ...CATS].map((c) =>
       `<button class="filter ${state.filter === c.id ? 'on' : ''}" data-action="filter" data-filter="${c.id}">${c.label}</button>`).join('');
     return `
       <div class="page-head"><div><h2>What's coming up</h2></div></div>
       <div class="filters" role="toolbar" aria-label="Filter events">${filters}</div>
-      ${weekly.length ? `<p class="section-label">Every week</p>${weekly.map(eventCard).join('')}<p class="section-label">Coming up</p>` : ''}
-      ${upcoming.length ? upcoming.map(eventCard).join('') : `
+      ${shown.length ? shown.map((w) => `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>${w.items.map(eventCard).join('')}`).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
+      ${weeks.length > shown.length ? `<button class="btn btn-ghost" style="width:100%;margin-top:4px" data-action="more-weeks">Show more weeks</button>` : ''}
       ${past.length ? `
-        <button class="btn btn-ghost btn-small" style="margin-top:8px" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
+        <button class="btn btn-ghost btn-small" style="margin-top:12px" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
   }
 
@@ -1281,6 +1327,7 @@
     try {
       if (a === 'tab') { state.tab = el.dataset.tab; renderTabs(); renderView(); }
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
+      else if (a === 'more-weeks') { const y = window.scrollY; state.weeksShown += 4; renderView(); window.scrollTo(0, y); }
       else if (a === 'toggle-past') { state.showPast = !state.showPast; renderView(); }
       else if (a === 'add') {
         if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
