@@ -416,3 +416,12 @@ input[type="date"].input, input[type="time"].input { min-height: 52px; }
 .event .body { padding-right: 44px; }
 .event h3 { padding-right: 0; }
 .event { min-height: 96px; }
+
+/* ---------- v11: one-day changes ---------- */
+.chip-canceled { background: var(--danger); color: var(--white); margin-bottom: 4px; }
+.event.canceled h3 { text-decoration: line-through; color: var(--ink-3); }
+.event.canceled .meta { color: var(--ink-3); }
+.replace-note { background: var(--yellow-soft); border-radius: 12px; padding: 10px 12px; margin: -6px 0 14px; font-size: 15px; }
+.qa-paste { margin-top: 8px; }
+
+[hidden] { display: none !important; }

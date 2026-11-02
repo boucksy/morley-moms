@@ -130,6 +130,12 @@ That's it. (To use OpenAI instead, also set `TRANSCRIBE_URL` to `https://api.ope
 
 ---
 
+## Forwarding a pickup text
+- **Android:** press and hold the text, tap **Share**, choose **Morley Moms**.
+- **iPhone:** press and hold the text, tap **Copy**, open the app, tap **+**, then **Paste a text**.
+
+The app fills in who, whom and which day. If that day normally has a weekly pickup, it replaces just that day. On any weekly pickup card, Edit also offers **Change just this day** and **Cancel just this day**.
+
 ## Who can do what
 
 - **Members:** see everything; post events and spelling lists; delete their own posts.

@@ -329,11 +329,26 @@
       </div>`;
   }
 
+  // Text shared into the app from Messages etc. (Android "Share" menu).
+  const sharedText = (() => {
+    try {
+      const q = new URLSearchParams(location.search);
+      const t = [q.get('title'), q.get('text'), q.get('url')].filter(Boolean).join(' ').trim();
+      if (t) history.replaceState(null, '', location.pathname);
+      return t;
+    } catch { return ''; }
+  })();
+
   async function afterSignIn() {
     state.me = await api.me();
     if (!state.me) { renderNotMember(); return; }
     renderShell();
     await refresh();
+    if (sharedText) {
+      quickAddSheet();
+      const box = $('#qaText'); if (box) box.value = sharedText;
+      quickGo();
+    }
   }
 
   /* ---------------- app shell ---------------- */
@@ -456,13 +471,14 @@
     const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article class="card event cat-${esc(ev.category)} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''}">
+      <article class="card event cat-${esc(ev.category)} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
         <div class="datebadge" aria-hidden="true">
           <span class="mon">${d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
           <span class="day">${d.getDate()}</span>
         </div>
         <div class="body">
           ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
+          ${ev.canceled ? '<span class="chip chip-canceled">Canceled</span>' : ev.replaces ? '<span class="chip chip-now">Changed</span>' : ''}
           <h3>${esc(ev.title)}</h3>
           <p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>
           ${repeating && next ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')}<span><strong>Next:</strong> ${esc(fmtDay(next))}</span></p>` : ''}
@@ -471,7 +487,7 @@
           ${ev.details ? `<p class="details">${linkify(ev.details)}</p>` : ''}
           <div class="card-tools">
             <button class="icon-btn" data-action="ics" data-id="${esc(ev.id)}" aria-label="Add to my calendar" title="Add to my calendar">${ICON.calendar.replace('<svg', '<svg width="20" height="20"')}</button>
-            <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" aria-label="Edit" title="Edit">${ICON.edit}</button>
+            <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" ${ev._occ ? `data-occ="${isoDate(localDay(ev.starts_at))}"` : ''} aria-label="Edit" title="Edit">${ICON.edit}</button>
           </div>
         </div>
       </article>`;
@@ -480,6 +496,7 @@
   // One card per day for weekly things (rides etc.), skipping no-school days.
   function occurrencesOf(ev, from, off) {
     const out = [];
+    const changed = new Set(state.events.filter((x) => x.replaces === ev.id).map((x) => isoDate(localDay(x.starts_at))));
     const first = localDay(ev.starts_at);
     const until = ev.repeat_until ? parseDate(ev.repeat_until) : null;
     const s0 = new Date(ev.starts_at);
@@ -487,7 +504,7 @@
     const d = new Date(Math.max(first, from));
     for (let i = 0; i < 400; i++) {
       if (until && d > until) break;
-      if (ev.repeat_days.includes(DOW[d.getDay()]) && !off.has(isoDate(d))) {
+      if (ev.repeat_days.includes(DOW[d.getDay()]) && !off.has(isoDate(d)) && !changed.has(isoDate(d))) {
         const st = new Date(d); st.setHours(s0.getHours(), s0.getMinutes(), 0, 0);
         let en = null;
         if (e0) { en = new Date(d); en.setHours(e0.getHours(), e0.getMinutes(), 0, 0); }
@@ -558,6 +575,7 @@
       end_time: !ev.all_day && ev.ends_at ? hhmm(new Date(ev.ends_at)) : '',
       end_date: ev.all_day && ev.ends_at && lastDayOf(ev) > localDay(ev.starts_at) ? isoDate(lastDayOf(ev)) : '',
       repeat_days: ev.repeat_days || [], repeat_until: ev.repeat_until || '',
+      replaces: ev.replaces || null, canceled: !!ev.canceled,
     };
   }
 
@@ -565,10 +583,12 @@
     const editing = editId ? state.events.find((e) => String(e.id) === String(editId)) : null;
     if (editing) p = eventToForm(editing);
     const cat = p.category || 'pto';
+    const series = p.replaces ? state.events.find((e) => e.id === p.replaces) : null;
     const reps = p.repeat_days || [];
     openSheet(`
-      <h2>${editing ? 'Edit event' : 'New event'}</h2>
+      <h2>${editing ? 'Edit event' : series ? 'Change just this day' : 'New event'}</h2>
       ${filledNote(p)}
+      ${series ? `<p class="replace-note">Instead of: <strong>${esc(series.title)}</strong></p>` : ''}
       <form id="sheetForm">
         <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Book fair volunteers"></label>
         <div class="field"><span>Type</span>
@@ -582,7 +602,7 @@
           <label class="field"><span>From <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
           <label class="field"><span>To <small>(optional)</small></span><input class="input" type="time" name="end_time" value="${esc(p.end_time || '')}"></label>
         </div>
-        <div class="field"><span>Repeats every week? <small>(optional)</small></span>
+        <div class="field" ${series ? 'hidden' : ''}><span>Repeats every week? <small>(optional)</small></span>
           <div class="seg">${['mon', 'tue', 'wed', 'thu', 'fri'].map((k) => `<label><input type="checkbox" name="repeat_days" value="${k}" ${reps.includes(k) ? 'checked' : ''}><span>${DOW_SHORT[k]}</span></label>`).join('')}</div>
           <label class="field" style="margin:10px 0 0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
         </div>
@@ -599,7 +619,7 @@
       const time = fd.get('time');
       const endTime = fd.get('end_time');
       const endDate = fd.get('end_date');
-      const repeatDays = fd.getAll('repeat_days');
+      const repeatDays = series ? [] : fd.getAll('repeat_days');
       const starts = time ? new Date(`${date}T${time}`) : parseDate(date);
       let ends = null;
       if (time && endTime) ends = new Date(`${date}T${endTime}`);
@@ -618,10 +638,38 @@
         pickup_dropoff: fd.get('pickup_dropoff').trim() || null,
         details: fd.get('details').trim() || null,
       };
+      if (series) { row.replaces = series.id; row.canceled = !!p.canceled; }
       if (editing) await api.updateEvent(editing.id, row); else await api.addEvent(row);
       state.tab = 'events'; state.filter = 'all';
       toast(editing ? 'Event updated' : 'Event posted');
     });
+  }
+
+  function occurrenceSheet(id, dateIso) {
+    const ev = state.events.find((e) => String(e.id) === String(id));
+    if (!ev) return;
+    openSheet(`
+      <h2>${esc(fmtDay(parseDate(dateIso)))}</h2>
+      <p class="qa-sub">${esc(ev.title)}</p>
+      <div class="sheet-actions">
+        <button class="btn btn-primary" type="button" data-action="occ-change" data-id="${esc(ev.id)}" data-occ="${dateIso}">Change just this day</button>
+        <button class="btn btn-ghost" type="button" data-action="occ-cancel" data-id="${esc(ev.id)}" data-occ="${dateIso}">Cancel just this day</button>
+        <button class="btn btn-ghost" type="button" data-action="occ-series" data-id="${esc(ev.id)}">Edit every week</button>
+      </div>`);
+  }
+
+  function oneDayFrom(ev, dateIso) {
+    const f = eventToForm(ev);
+    return { ...f, date: dateIso, end_date: '', repeat_days: [], repeat_until: '', replaces: ev.id, details: '' };
+  }
+
+  async function cancelOneDay(ev, dateIso) {
+    const f = oneDayFrom(ev, dateIso);
+    const starts = f.time ? new Date(`${dateIso}T${f.time}`) : parseDate(dateIso);
+    const ends = f.time && f.end_time ? new Date(`${dateIso}T${f.end_time}`) : null;
+    await api.addEvent({ title: ev.title, category: ev.category, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null,
+      all_day: !f.time, location: ev.location || null, pickup_dropoff: null, details: null, repeat_days: null, repeat_until: null,
+      replaces: ev.id, canceled: true });
   }
 
   function downloadIcs(ev) {
@@ -1040,6 +1088,7 @@
           <p id="micStatus">Tap to talk</p>
         </div>` : ''}
       <textarea id="qaText" class="input qa-text" placeholder="${canTalk ? 'Or type it here…' : 'Type it here, or use the 🎤 on your keyboard…'}"></textarea>
+      ${navigator.clipboard && navigator.clipboard.readText ? '<button type="button" class="btn btn-ghost btn-small qa-paste" data-action="qa-paste">Paste a text</button>' : ''}
       <button type="button" class="btn btn-primary" data-action="qa-go" style="margin-top:12px">Fill it in</button>
       <div class="qa-or"><span>or</span></div>
       <label class="btn btn-yellow qa-photo">${ICON.camera} Snap the paper
@@ -1171,7 +1220,20 @@
       if (!cls) { toast(r.name ? `Couldn’t find ${r.name}’s class.` : 'Which class? Try “Ms. Carey is on day 3 today.”'); return; }
       closeSheet(); setRotationDay(cls.id, r.date, r.day);
     }
-    else addEventSheet({ ...r, _filled: true });
+    else {
+      const p = { ...r, _filled: true };
+      if (r.category === 'rides' && r.date && !(r.repeat_days && r.repeat_days.length) && r.kid) {
+        const d = parseDate(r.date); const off = noSchoolDates();
+        const firstName = r.kid.split(/\s+/)[0].toLowerCase();
+        const usual = state.events.find((e) => isRepeating(e) && e.category === 'rides' && e.title.toLowerCase().includes(firstName)
+          && occurrencesOf(e, d, off).some((o) => isoDate(localDay(o.starts_at)) === r.date));
+        if (usual) {
+          const base = eventToForm(usual);
+          Object.assign(p, { replaces: usual.id, time: p.time || base.time, end_time: p.end_time || base.end_time });
+        }
+      }
+      addEventSheet(p);
+    }
   }
 
   function quickGo() {
@@ -1337,6 +1399,13 @@
       else if (a === 'close-sheet') { stopMic(); closeSheet(); }
       else if (a === 'mic') toggleMic();
       else if (a === 'qa-go') quickGo();
+      else if (a === 'qa-paste') {
+        try {
+          const txt = await navigator.clipboard.readText();
+          const box = $('#qaText');
+          if (box && txt) { box.value = (box.value ? box.value.trim() + '\n' : '') + txt.trim(); }
+        } catch { toast('Couldn’t paste. Press and hold the box, then tap Paste.'); }
+      }
       else if (a === 'manual-event') { stopMic(); addEventSheet(); }
       else if (a === 'manual-spelling') { stopMic(); addSpellingSheet(); }
       else if (a === 'manual-specials') { stopMic(); specialsSheet(); }
@@ -1352,7 +1421,13 @@
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
       else if (a === 'signout') { closeSheet(); await api.signOut(); state.me = null; state.signin = { step: 'email', email: '' }; renderSignIn(); }
       else if (a === 'ics') { const ev = state.events.find((x) => String(x.id) === el.dataset.id); if (ev) downloadIcs(ev); }
-      else if (a === 'edit-event') addEventSheet({}, el.dataset.id);
+      else if (a === 'edit-event') { if (el.dataset.occ) occurrenceSheet(el.dataset.id, el.dataset.occ); else addEventSheet({}, el.dataset.id); }
+      else if (a === 'occ-change') { const ev = state.events.find((e) => String(e.id) === el.dataset.id); if (ev) addEventSheet(oneDayFrom(ev, el.dataset.occ)); }
+      else if (a === 'occ-series') addEventSheet({}, el.dataset.id);
+      else if (a === 'occ-cancel') {
+        const ev = state.events.find((e) => String(e.id) === el.dataset.id);
+        if (ev) { await cancelOneDay(ev, el.dataset.occ); closeSheet(); toast('Canceled for that day'); await refresh(); }
+      }
       else if (a === 'edit-spell') addSpellingSheet({}, null, el.dataset.id);
       else if (a === 'del-event') {
         if (!confirm('Delete this event for everyone?')) return;

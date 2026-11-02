@@ -84,6 +84,13 @@ alter table public.events drop constraint if exists events_repeat_days_check;
 alter table public.events add constraint events_repeat_days_check
   check (repeat_days is null or repeat_days <@ array['mon','tue','wed','thu','fri','sat','sun']);
 
+-- v5: one-day changes to a weekly item (a swapped or canceled pickup).
+--   replaces  the weekly item this one stands in for on its date
+--   canceled  true when that day's weekly item just isn't happening
+alter table public.events add column if not exists replaces uuid references public.events(id) on delete cascade;
+alter table public.events add column if not exists canceled boolean not null default false;
+create index if not exists events_replaces_idx on public.events (replaces);
+
 -- ---------- Spelling lists ----------
 create table if not exists public.spelling_lists (
   id              uuid primary key default gen_random_uuid(),

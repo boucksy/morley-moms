@@ -273,6 +273,24 @@
   /* ---------- events ---------- */
   const PLACES = /\b(?:the\s+)?(gym|library|cafeteria|front office|office|playground|auditorium|music room|art room|front doors?|east doors?|west doors?|north doors?|south doors?|main entrance|parking lot|pickup line|room \d+)\b/i;
 
+  /* ---------- one-off rides (often a forwarded text) ---------- */
+  const RIDE_VERB = "(?:pick(?:s|ing)?\\s+up|grab(?:s|bing)?|get(?:s|ting)?|take(?:s)?|taking|drive(?:s)?|driving)";
+  const NOT_NAMES = new Set('I Can Could Hey Hi Yes Sure Ok Okay Would Will Please Thanks Thank So And But Today Tomorrow She He We They You It Also Just Mom Then If Monday Tuesday Wednesday Thursday Friday Saturday Sunday'.split(' '));
+  const NAME = "[A-Z][a-z]+(?:\\s+(?:and|&)\\s+[A-Z][a-z]+)?";
+  function findRide(raw) {
+    const text = String(raw || '');
+    let kid = '';
+    let m = new RegExp('\\b' + RIDE_VERB + '\\s+(' + NAME + ')', 'g');
+    let hit;
+    while ((hit = m.exec(text))) { const first = hit[1].split(/\s+/)[0]; if (!NOT_NAMES.has(first)) { kid = hit[1]; break; } }
+    if (!kid && (hit = /\bpick\s+([A-Z][a-z]+)\s+up\b/.exec(text)) && !NOT_NAMES.has(hit[1])) kid = hit[1];
+    if (!kid) return null;
+    let driver = '';
+    const dRe = new RegExp("\\b([A-Z][a-z]+)(?:'s|’s|\\s+(?:will|can|could|is going to|is gonna|is|'ll|’ll))?\\s+" + RIDE_VERB, 'g');
+    while ((hit = dRe.exec(text))) { if (!NOT_NAMES.has(hit[1]) && !kid.includes(hit[1])) { driver = hit[1]; break; } }
+    return { kid, driver };
+  }
+
   function findEvent(raw, now) {
     const t = normalize(raw);
     const out = { type: 'event', title: '', category: categoryOf(t), date: null, time: '', location: '', pickup_dropoff: '', details: '' };
@@ -334,6 +352,22 @@
     if (title.length > 70) title = title.slice(0, 70).replace(/\s+\S*$/, '') + '…';
     if (title.length < 3) title = '';
     out.title = title ? title[0].toUpperCase() + title.slice(1) : '';
+    // A ride, like a forwarded "Can Harmony grab Emora Thursday?": keep the
+    // text itself as the record, and only name who/whom the text names.
+    // "every Tuesday" / "every Wednesday and Thursday" repeats weekly.
+    const every = /\bevery\s+((?:(?:mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri)(?:day)?s?(?:\s*(?:,|and|&)\s*)?)+)/i.exec(t);
+    if (every) {
+      out.repeat_days = [...new Set((every[1].match(/mon|tue|wed|thu|fri/gi) || []).map((x) => x.toLowerCase()))];
+      out.title = out.title.replace(/\s*\bevery\b.*$/i, '').trim();
+    }
+    const ride = findRide(raw);
+    if (ride && !every && (out.category === 'rides' || ['school', 'kids'].includes(out.category))) {
+      out.category = 'rides';
+      out.title = ride.driver ? `${ride.driver} picks up ${ride.kid}` : `Pickup: ${ride.kid}`;
+      out.kid = ride.kid;
+      out.details = String(raw || '').trim().slice(0, 2000);
+      out.location = '';
+    }
     return out;
   }
 
