@@ -353,11 +353,33 @@
     if (!state.me) { renderNotMember(); return; }
     renderShell();
     await refresh();
+    maybeInstallSheet();
     if (sharedText) {
       quickAddSheet();
       const box = $('#qaText'); if (box) box.value = sharedText;
       quickGo();
     }
+  }
+
+  // One-time "put it on your home screen" nudge. Shows once per phone, or any
+  // time the link has ?install=1 (the welcome email uses that link).
+  function maybeInstallSheet() {
+    if (isStandalone() || sharedText) return;
+    const forced = /[?&]install=1/.test(location.search);
+    let seen = false;
+    try { seen = localStorage.getItem('mm-install-seen') === '1'; } catch {}
+    if (seen && !forced) return;
+    try { localStorage.setItem('mm-install-seen', '1'); } catch {}
+    const steps = isIOS()
+      ? `<ol class="install-steps"><li>Open this page in <strong>Safari</strong>.</li><li>Tap the <strong>Share</strong> button (square with an arrow).</li><li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li></ol>`
+      : deferredInstall
+        ? `<button class="btn btn-yellow" data-action="install" style="margin:4px 0 12px">Add to my home screen</button>`
+        : `<ol class="install-steps"><li>In Chrome, tap the <strong>⋮</strong> menu.</li><li>Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li></ol>`;
+    openSheet(`
+      <h2>Put Morley Moms on your home screen</h2>
+      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Then it opens like any other app.</p>
+      ${steps}
+      <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Not now</button></div>`);
   }
 
   /* ---------------- app shell ---------------- */
