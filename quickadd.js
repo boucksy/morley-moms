@@ -322,6 +322,7 @@
       const trip = /\btrip\s+to\s+(?:the\s+)?([A-Za-z][A-Za-z0-9'&]*(?:\s+[A-Za-z0-9'&]+){0,4}?)(?=\s+(?:on|at|this|next|tomorrow|for|by)\b|[,.;!\n]|\s*$)/i.exec(t);
       if (trip) loc = trip[1];
     }
+    if (loc && /^(our|your|their|my|his|her|this|that|these|those|its|a|an)\b/i.test(loc)) loc = '';
     if (loc) out.location = loc.replace(/(^|\s)\w/g, (c) => c.toUpperCase()).replace(/(?!^)\b(Of|And|The|To|On|At|In|By)\b/g, (w) => w.toLowerCase());
 
     // Anything after the first sentence (other than the pickup line) becomes the details.
@@ -371,8 +372,23 @@
     return out;
   }
 
+  // Photo readers add stray symbols and misread digits ("November |9@").
+  // Tidy the obvious ones and drop greeting and junk lines.
+  function cleanPhotoText(raw) {
+    let t = String(raw || '');
+    t = t.replace(new RegExp('\\b(' + MONTH_RE + ')\\s+[|Il](\\d)\\b', 'gi'), (m, mon, _i, d) => mon + ' 1' + d);
+    t = t.replace(/(\d)\s*(?:th|st|nd|rd)?[@©®]/g, '$1');
+    return t.split('\n').filter((l) => {
+      const x = l.trim(); if (!x) return false;
+      if (/^dear\b/i.test(x)) return false;
+      const letters = (x.match(/[A-Za-z0-9]/g) || []).length;
+      return letters / x.length > 0.6 && /[A-Za-z]{4,}/.test(x);
+    }).join('\n');
+  }
+
   function parse(raw, opts = {}) {
     const now = opts.now || new Date();
+    if (opts.fromPhoto) raw = cleanPhotoText(raw);
     const t = normalize(raw);
     // "Ms. Carey is on day 3 today" / "Today is day four for Ms. Walton"
     // sets that class's place in the specials rotation.
