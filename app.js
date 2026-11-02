@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 36;
+  const APP_VERSION = 37;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -577,7 +577,6 @@
         </div>
         <div class="body">
           <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
-          ${classMeta(ev.classroom_id)}
           <p class="meta">${ICON.clock}<span><strong>${esc(label || fmtDay(d))}</strong></span></p>
           <button class="btn btn-ghost btn-small" style="margin-top:8px" data-action="see-spelling" data-id="${esc(ev.spell_id)}">See the words</button>
         </div>
@@ -615,7 +614,7 @@
           <p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>
           ${repeating && next ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')}<span><strong>Next:</strong> ${esc(fmtDay(next))}</span></p>` : ''}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
-          ${classMeta(ev.classroom_id)}
+          ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
           <div class="card-tools">
@@ -894,7 +893,6 @@
               ${next ? `<span class="chip chip-volunteer">Up next${countdown ? ' · ' + esc(countdown) : ''}</span>` : ''}
               <p class="spell-date" style="margin-top:${next ? '8px' : '0'}">${esc(headline)}</p>
               ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
-              ${classMeta(s.classroom_id)}
             </div>
             <button class="btn btn-ghost btn-small" data-action="edit-spell" data-id="${esc(s.id)}">${ICON.edit} Edit</button>
           </div>
