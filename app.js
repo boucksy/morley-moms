@@ -115,6 +115,7 @@
       async deleteSpelling(row) { db.spelling = db.spelling.filter((s) => s.id !== row.id); return delay(); },
       async photoUrl(path) { return path; },
       async transcribe() { throw new Error('Voice on iPhone works once the app is connected (see setup step 8). Type it for now.'); },
+      async readPhoto() { throw new Error('demo'); },
       async listClassrooms() { return delay([...db.classrooms].sort((a, b) => a.name.localeCompare(b.name))); },
       async saveClassroom(row, id) {
         const clash = db.classrooms.find((c) => c.name.toLowerCase() === row.name.toLowerCase() && c.id !== id);
@@ -194,6 +195,13 @@
         const { data, error } = await sb.functions.invoke('transcribe', { body: fd });
         if (error) throw new Error('Couldn\u2019t catch that. Tap the mic and try again.');
         return (data && data.text) || '';
+      },
+      async readPhoto(file) {
+        const fd = new FormData();
+        fd.append('photo', file, 'paper.jpg');
+        const { data, error } = await sb.functions.invoke('read-photo', { body: fd });
+        if (error || !data || data.error) throw new Error('vision');
+        return data;
       },
       async listClassrooms() { return ok(await sb.from('classrooms').select('*').order('name')); },
       async saveClassroom(row, id) {
@@ -1285,6 +1293,20 @@
     setPct(0.05, 'Getting the reader ready…');
     let small = await shrinkImage(file, 2000);
     let worker = null;
+    // 1) Best reader first: the AI reader through Supabase (works when connected).
+    try {
+      setPct(0.2, 'Reading the paper…');
+      const v = await api.readPhoto(small);
+      if (v.kind === 'spelling' && v.words.length) {
+        openFilled({ type: 'spelling', title: v.title || undefined, test_date: v.test_date || null, words: v.words, challenge_words: v.challenge_words }, small);
+        return;
+      }
+      if (v.text && v.text.replace(/\W/g, '').length >= 6) {
+        const r = window.MMQuick.parse(v.text, { fromPhoto: true });
+        openFilled(r, r.type === 'spelling' ? small : null);
+        return;
+      }
+    } catch { /* fall back to the free on-phone reader below */ }
     try {
       await loadTesseract();
       worker = await window.Tesseract.createWorker('eng');

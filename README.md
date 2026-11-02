@@ -116,6 +116,13 @@ That's it. (To use OpenAI instead, also set `TRANSCRIBE_URL` to `https://api.ope
 
 ---
 
+### 9. Turn on the AI photo reader (about 5 minutes, a few cents per photo)
+Reads spelling lists and flyers far better than the free on-phone reader, even when the paper is sideways or has check marks and handwriting on it.
+1. Sign up at console.anthropic.com, add a few dollars of credit (turn **auto-reload off**), and create an API key.
+2. In Supabase: **Edge Functions → Deploy a new function → Via editor**, name it `read-photo`, paste in `supabase/functions/read-photo/index.ts`, and deploy.
+3. **Edge Functions → Secrets**: add `ANTHROPIC_API_KEY` = your key.
+If it's not set up or it fails, the app falls back to the free on-phone reader.
+
 ## Adding moms
 
 1. Open the app → **Members** tab → **+** → enter her name and email.
@@ -155,6 +162,7 @@ The app fills in who, whom and which day. If that day normally has a weekly pick
 - `index.html`, `styles.css`, `app.js`: the app
 - `quickadd.js`: turns what moms say or snap into a filled-in form (spelling, specials or event)
 - `supabase/functions/transcribe/`: voice-to-text for iPhones
+- `supabase/functions/read-photo/`: AI reader for photos of papers
 - `config.js`: your Supabase connection (public-safe values only)
 - `manifest.webmanifest`, `sw.js`, `icons/`: make it installable
 - `supabase/schema.sql`: database tables and security rules
