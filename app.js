@@ -120,8 +120,9 @@
       },
       async deleteClassroom(id) { db.classrooms = db.classrooms.filter((c) => c.id !== id); return delay(); },
       async listAnchors() { return delay([...db.anchors]); },
-      async setAnchor(anchor_date, day_number) {
-        db.anchors = db.anchors.filter((a) => a.anchor_date !== anchor_date).concat({ anchor_date, day_number, created_by_name: state.me.display_name });
+      async setAnchor(classroom_id, anchor_date, day_number) {
+        db.anchors = db.anchors.filter((a) => !(a.anchor_date === anchor_date && a.classroom_id === classroom_id))
+          .concat({ classroom_id, anchor_date, day_number, created_by_name: state.me.display_name });
         return delay();
       },
       async listMembers() { return delay([...db.members].sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''))); },
@@ -187,8 +188,8 @@
       },
       async deleteClassroom(id) { ok(await sb.from('classrooms').delete().eq('id', id)); },
       async listAnchors() { return ok(await sb.from('rotation_anchors').select('*').order('anchor_date')); },
-      async setAnchor(anchor_date, day_number) {
-        ok(await sb.from('rotation_anchors').upsert({ anchor_date, day_number }, { onConflict: 'anchor_date' }));
+      async setAnchor(classroom_id, anchor_date, day_number) {
+        ok(await sb.from('rotation_anchors').upsert({ classroom_id, anchor_date, day_number }, { onConflict: 'classroom_id,anchor_date' }));
       },
       async listMembers() { return ok(await sb.from('members').select('*').order('display_name')); },
       async addMember(m) {
@@ -734,9 +735,11 @@
     return out;
   }
 
-  // Rotation day number (1–4) for a date, or null if nobody has set it yet.
-  function rotationDay(date, off = noSchoolDates()) {
-    const anchors = [...(state.anchors || [])].sort((a, b) => a.anchor_date.localeCompare(b.anchor_date));
+  // A class's rotation day number (1–4) for a date, or null if nobody has
+  // set that class's day yet (or there's no school that day).
+  function rotationDay(date, classId, off = noSchoolDates()) {
+    const anchors = (state.anchors || []).filter((a) => a.classroom_id === classId)
+      .sort((a, b) => a.anchor_date.localeCompare(b.anchor_date));
     if (!anchors.length) return null;
     const target = new Date(date); target.setHours(0, 0, 0, 0);
     if (!isSchoolDay(target, off)) return null;
@@ -747,9 +750,9 @@
       const d = parseDate(anchor.anchor_date);
       while (isoDate(d) < t) { d.setDate(d.getDate() + 1); if (isSchoolDay(d, off)) n++; }
     } else {
+      // Only a later date has been set: count back to the target.
       anchor = anchors[0];
       const d = parseDate(anchor.anchor_date);
-      // Only a future date has been set: count back to the target.
       while (isoDate(d) > t) { d.setDate(d.getDate() - 1); if (isSchoolDay(d, off)) n--; }
     }
     return ((((anchor.day_number - 1 + n) % 4) + 4) % 4) + 1;
@@ -772,15 +775,12 @@
     const mine = rooms.find((c) => c.id === myId);
     const off = noSchoolDates();
     const days = upcomingSchoolDays(2, off);
-    const known = (state.anchors || []).length > 0;
-    const todayNum = days.length && isoDate(days[0]) === isoDate(startOfToday()) ? rotationDay(days[0], off) : null;
+    const first = days[0];
+    const isToday = first && isoDate(first) === isoDate(startOfToday());
+    const whenWord = !first ? '' : isToday ? 'today' : fmtDay(first);
 
-    const askDay = (d) => `
-      <div class="sp-ask">
-        <p class="sp-ask-q">What rotation day is ${esc(dayLabel(d).toLowerCase() === 'today' ? 'today' : fmtDay(d))}?</p>
-        <div class="sp-ask-btns">${ROT.map((n) => `<button type="button" class="sp-num" data-action="set-day" data-date="${isoDate(d)}" data-day="${n}">Day ${n}</button>`).join('')}</div>
-        <p class="sp-ask-hint">Set it once. The app counts school days from there and skips days off.</p>
-      </div>`;
+    const dayButtons = (classId, extra = '') => `<div class="sp-ask-btns ${extra}">${ROT.map((n) =>
+      `<button type="button" class="sp-num" data-action="set-day" data-class="${esc(classId)}" data-date="${first ? isoDate(first) : ''}" data-day="${n}">Day ${n}</button>`).join('')}</div>`;
 
     let hero = '';
     if (rooms.length) {
@@ -792,12 +792,20 @@
           </select>
         </label>`;
       let body = '';
-      if (!known && days.length) body = askDay(days[0]);
-      else if (mine) {
+      if (!mine) {
+        body = '<p class="hint">Pick your class to see today’s and tomorrow’s specials up top.</p>';
+      } else if (first && rotationDay(first, mine.id, off) === null) {
+        body = `
+          <div class="sp-ask">
+            <p class="sp-ask-q">What day is ${esc(mine.name)}’s class on ${esc(whenWord)}?</p>
+            ${dayButtons(mine.id)}
+            <p class="sp-ask-hint">Set it once. The app counts school days from there and skips days off.</p>
+          </div>`;
+      } else {
         const ex = getExtras();
         const hasSchedule = Object.keys(mine.schedule || {}).length > 0;
         body = `<div class="sp-days">${days.map((d) => {
-          const num = rotationDay(d, off);
+          const num = rotationDay(d, mine.id, off);
           const wk = WEEK[d.getDay() - 1][0];
           const list = [...((mine.schedule || {})[String(num)] || []), ...(ex.days.includes(wk) ? [ex.label] : [])];
           return `
@@ -808,17 +816,18 @@
         }).join('')}</div>
         <button type="button" class="sp-extras" data-action="edit-extras">${ex.days.length
           ? `${esc(ex.label)}: ${esc(ex.days.map((k) => WEEK.find((w) => w[0] === k)[1].slice(0, 3)).join(', '))} <small>· only on this phone · edit</small>`
-          : `+ Add ${esc(ex.label.toLowerCase())} days <small>· only on this phone</small>`}</button>`;
-      } else {
-        body = `<p class="hint">${todayNum ? `Today is <strong>Day ${todayNum}</strong>. ` : ''}Pick your class to see today’s and tomorrow’s specials up top.</p>`;
+          : `+ Add ${esc(ex.label.toLowerCase())} days <small>· only on this phone</small>`}</button>
+        <button type="button" class="sp-fix" data-action="fix-day" data-class="${esc(mine.id)}">Not right? Set ${esc(mine.name)}’s day number</button>`;
       }
-      const fix = known && days.length ? `<button type="button" class="sp-fix" data-action="fix-day">Not right? Set ${isoDate(days[0]) === isoDate(startOfToday()) ? 'today’s' : 'the next school day’s'} day number</button>` : '';
-      hero = `<div class="card sp-hero">${picker}${body}${fix}</div>`;
+      hero = `<div class="card sp-hero">${picker}${body}</div>`;
     }
-    return `
-      <div class="page-head"><div><h2>Specials</h2><p>Library, music, art and gym on a Day 1–4 rotation.</p></div></div>
-      ${hero}
-      ${rooms.length ? rooms.map((c) => `
+
+    const roomCard = (c) => {
+      const num = first ? rotationDay(first, c.id, off) : null;
+      const status = !first ? '' : num
+        ? `<p class="sp-status">${isToday ? 'Today' : esc(fmtDay(first))}: <strong>Day ${num}</strong> <button type="button" class="link-btn inline" data-action="fix-day" data-class="${esc(c.id)}">change</button></p>`
+        : `<div class="sp-set"><p class="sp-status">What day is this class on ${esc(whenWord)}?</p>${dayButtons(c.id, 'light small')}</div>`;
+      return `
         <article class="card sp-room ${c.id === myId ? 'mine' : ''}">
           <div class="spell-head">
             <h3 class="sp-name">${esc(c.name)}${c.id === myId ? ' <span class="chip chip-volunteer">My class</span>' : ''}</h3>
@@ -826,29 +835,38 @@
               <button class="btn btn-ghost btn-small" data-action="edit-class" data-id="${esc(c.id)}">${ICON.edit} Edit</button>
             </div>
           </div>
+          ${status}
           <div class="sp-week">
-            ${ROT.map((n) => `<div class="sp-row ${todayNum && String(todayNum) === n ? 'today' : ''}"><span class="sp-d">Day ${n}</span><span class="sp-list">${specialChips((c.schedule || {})[n])}</span>${todayNum && String(todayNum) === n ? '<span class="sp-today">Today</span>' : ''}</div>`).join('')}
+            ${ROT.map((n) => `<div class="sp-row ${num && String(num) === n ? 'today' : ''}"><span class="sp-d">Day ${n}</span><span class="sp-list">${specialChips((c.schedule || {})[n])}</span>${num && String(num) === n ? `<span class="sp-today">${isToday ? 'Today' : 'Next'}</span>` : ''}</div>`).join('')}
           </div>
           ${c.notes ? `<p class="details">${linkify(c.notes)}</p>` : ''}
           ${canEdit(c) ? `<button class="link-btn inline danger" data-action="del-class" data-id="${esc(c.id)}" style="margin-top:12px">Delete this class</button>` : ''}
-        </article>`).join('') : `
+        </article>`;
+    };
+
+    return `
+      <div class="page-head"><div><h2>Specials</h2><p>Library, music, art and gym. Each class has its own Day 1–4 rotation.</p></div></div>
+      ${hero}
+      ${rooms.length ? rooms.map(roomCard).join('') : `
         <div class="card empty"><p class="big">No classes yet</p><p>Tap + and say something like “Ms. Carey: day 1 art, day 2 gym, day 3 music, day 4 library.”</p></div>`}`;
   }
 
-  async function setRotationDay(dateIso, n) {
-    await api.setAnchor(dateIso, Number(n));
-    toast(`Got it: Day ${n}`);
+  async function setRotationDay(classId, dateIso, n) {
+    const c = state.classrooms.find((x) => x.id === classId);
+    await api.setAnchor(classId, dateIso, Number(n));
+    toast(`${c ? c.name + ': ' : ''}Day ${n}`);
     await refresh();
   }
 
-  function fixDaySheet() {
+  function fixDaySheet(classId) {
+    const c = state.classrooms.find((x) => x.id === classId);
     const d = upcomingSchoolDays(1)[0];
-    if (!d) return;
-    const cur = rotationDay(d);
+    if (!c || !d) return;
+    const cur = rotationDay(d, c.id);
     openSheet(`
-      <h2>Set the day number</h2>
+      <h2>${esc(c.name)}’s day number</h2>
       <p class="qa-sub">${esc(dayLabel(d))}${cur ? ` the app thinks it’s <strong>Day ${cur}</strong>` : ''}. If the school says otherwise, pick the right number. Everything after it follows.</p>
-      <div class="sp-ask-btns light">${ROT.map((n) => `<button type="button" class="sp-num ${String(cur) === n ? 'on' : ''}" data-action="set-day" data-date="${isoDate(d)}" data-day="${n}">Day ${n}</button>`).join('')}</div>
+      <div class="sp-ask-btns light">${ROT.map((n) => `<button type="button" class="sp-num ${String(cur) === n ? 'on' : ''}" data-action="set-day" data-class="${esc(c.id)}" data-date="${isoDate(d)}" data-day="${n}">Day ${n}</button>`).join('')}</div>
       <div class="sheet-actions" style="margin-top:16px"><button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button></div>`);
   }
 
@@ -1072,7 +1090,9 @@
     else if (r.type === 'rotation') {
       const d = parseDate(r.date);
       if (!isSchoolDay(d, noSchoolDates())) { toast('There’s no school that day.'); return; }
-      closeSheet(); setRotationDay(r.date, r.day);
+      const cls = (r.name && findClass(r.name)) || (!r.name && state.classrooms.find((c) => c.id === getMyClass()));
+      if (!cls) { toast(r.name ? `Couldn’t find ${r.name}’s class.` : 'Which class? Try “Ms. Carey is on day 3 today.”'); return; }
+      closeSheet(); setRotationDay(cls.id, r.date, r.day);
     }
     else addEventSheet({ ...r, _filled: true });
   }
@@ -1244,8 +1264,8 @@
       else if (a === 'manual-specials') { stopMic(); specialsSheet(); }
       else if (a === 'edit-class') specialsSheet({}, el.dataset.id);
       else if (a === 'edit-extras') extrasSheet();
-      else if (a === 'set-day') { closeSheet(); await setRotationDay(el.dataset.date, el.dataset.day); }
-      else if (a === 'fix-day') fixDaySheet();
+      else if (a === 'set-day') { closeSheet(); await setRotationDay(el.dataset.class, el.dataset.date, el.dataset.day); }
+      else if (a === 'fix-day') fixDaySheet(el.dataset.class);
       else if (a === 'del-class') {
         if (!confirm('Delete this class and its specials for everyone?')) return;
         await api.deleteClassroom(el.dataset.id); toast('Class deleted'); await refresh();

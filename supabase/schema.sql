@@ -222,17 +222,21 @@ create policy "owner or admin deletes classrooms" on public.classrooms
   for delete to authenticated
   using (public.is_member() and (created_by = auth.uid() or public.is_admin()));
 
--- ---------- Specials rotation (Day 1–4) ----------
+-- ---------- Specials rotation (Day 1–4, per class) ----------
 -- Classroom schedules are keyed by day number: {"1":["Art"],"2":["Gym"],...}
--- A row here says "this date was Day N". The app counts school days from
--- the latest one, skipping weekends and "No school" days, so snow days and
--- breaks shift the rotation automatically. A newer row corrects it from then on.
+-- Each class runs its own count. A row here says "on this date, this class
+-- was on Day N". The app counts school days from the latest row for that
+-- class, skipping weekends and "No school" days, so snow days and breaks
+-- shift the rotation automatically. A newer row corrects it from then on.
 create table if not exists public.rotation_anchors (
-  anchor_date     date primary key,
+  id              uuid primary key default gen_random_uuid(),
+  classroom_id    uuid not null references public.classrooms(id) on delete cascade,
+  anchor_date     date not null,
   day_number      smallint not null check (day_number between 1 and 4),
   created_by      uuid references auth.users(id) on delete set null,
   created_by_name text,
-  created_at      timestamptz not null default now()
+  created_at      timestamptz not null default now(),
+  unique (classroom_id, anchor_date)
 );
 drop trigger if exists anchors_author on public.rotation_anchors;
 create trigger anchors_author before insert on public.rotation_anchors

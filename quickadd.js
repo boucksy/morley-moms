@@ -340,11 +340,13 @@
   function parse(raw, opts = {}) {
     const now = opts.now || new Date();
     const t = normalize(raw);
-    // "Today is day 3" / "tomorrow is day four" sets the specials rotation.
-    const rot = /\b(today|tomorrow)(?:'s| is)\s+(?:a\s+)?day\s*(?:#\s*|number\s*)?(1|2|3|4|one|two|three|four)\b/i.exec(t);
-    if (!opts.force && rot) {
-      const d = dayStart(now); if (/tomorrow/i.test(rot[1])) d.setDate(d.getDate() + 1);
-      return { type: 'rotation', date: iso(d), day: NUM_WORD[rot[2].toLowerCase()] || +rot[2] };
+    // "Ms. Carey is on day 3 today" / "Today is day four for Ms. Walton"
+    // sets that class's place in the specials rotation.
+    const rotDay = new RegExp('\\b' + WEEKDAY_TOKEN + '\\b', 'i').exec(t);
+    const rotWhen = /\b(today|tomorrow)\b/i.exec(t);
+    if (!opts.force && rotDay && rotWhen && !new RegExp('\\b' + SPECIAL_TOKEN + '\\b', 'i').test(t) && !/\bspell/i.test(t)) {
+      const d = dayStart(now); if (/tomorrow/i.test(rotWhen[1])) d.setDate(d.getDate() + 1);
+      return { type: 'rotation', date: iso(d), day: +dayKey(rotDay[1]), name: findSpecials(raw).name || '' };
     }
     let kind = opts.force || classify(t, !!opts.fromPhoto);
     if (!opts.force && kind === 'event' && looksLikeSpecials(t)) kind = 'specials';

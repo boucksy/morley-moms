@@ -373,3 +373,16 @@ textarea.input { min-height: 90px; resize: vertical; }
 .sp-fix { display: block; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.85); font-weight: 700; font-size: 13px; text-decoration: underline; }
 .sp-d { width: 52px; }
 .sp-today { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--ink); background: var(--yellow); border-radius: 999px; padding: 2px 8px; }
+
+/* ---------- v7: per-class rotation; pink no-school cards ---------- */
+.event.off { background: #FDE7E9; border-left-color: var(--danger); }
+.event.off h3 { color: #8F1D17; }
+.event.off .meta, .event.off .meta svg, .event.off .by { color: #A1453F; }
+.event.off .datebadge { background: var(--white); color: var(--danger); }
+.event.off.soon .datebadge { background: var(--danger); color: var(--white); }
+.event.off .btn-ghost { background: var(--white); }
+.sp-status { margin-top: 8px; font-size: 15px; color: var(--ink-2); }
+.sp-status strong { color: var(--ink); }
+.sp-set { margin-top: 10px; background: var(--bg); border-radius: 14px; padding: 10px; }
+.sp-set .sp-status { margin: 0 0 8px; font-weight: 700; }
+.sp-ask-btns.small .sp-num { min-height: 42px; font-size: 15px; border-radius: 12px; }

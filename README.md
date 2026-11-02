@@ -2,7 +2,7 @@
 
 A private, invite-only app for the Morley Moms. It installs on iPhone and Android from a link (no app stores) and only approved members can see anything.
 
-**Includes:** email-code sign-in; **Quick Add** (talk, type or snap a photo and the app fills in the form); events (PTO, school, volunteer, moms' outings, kids) with drop-off/pickup details and "add to calendar"; spelling lists with the test day, words, challenge words and a photo; Specials on the school's Day 1–4 rotation (each class maps day numbers to library, music, art or gym; the app counts school days and skips days off, and shows today/tomorrow for your kid's class); and a members list you control.
+**Includes:** email-code sign-in; **Quick Add** (talk, type or snap a photo and the app fills in the form); events (PTO, school, volunteer, moms' outings, kids) with drop-off/pickup details and "add to calendar"; spelling lists with the test day, words, challenge words and a photo; Specials on a Day 1–4 rotation (each class has its own day count and its own library, music, art or gym for each number; the app counts school days and skips days off, and shows today/tomorrow for your kid's class); and a members list you control.
 
 ### How Quick Add works
 1. Tap **+**.
