@@ -75,8 +75,8 @@
             created_by: 'u-miranda', created_by_name: 'Miranda' };
         }),
       ],
-      classrooms: [],
-      spelling: [],
+      classrooms: (window.MM_DEMO_CLASSES || []).map((name, i) => ({ id: `class${i}`, name, schedule: {}, notes: null, created_by: 'u-miranda', created_by_name: 'Miranda' })),
+      spelling: (window.MM_DEMO_SPELLING || []).map((sp, i) => ({ id: `spell${i}`, title: null, notes: null, photo_path: null, ...sp, created_by: 'u-miranda', created_by_name: 'Miranda' })),
     };
     const delay = (v) => new Promise((r) => setTimeout(() => r(v), 150));
     return {
@@ -747,7 +747,7 @@
         return `
           <div class="sp-day">
             <p class="sp-when">${esc(dayLabel(d))} <small>${esc(d.toLocaleDateString(undefined, { weekday: 'short' }))}</small></p>
-            <p class="sp-what">${list.length ? esc(list.join(' + ')) : 'No specials'}</p>
+            <p class="sp-what">${list.length ? esc(list.join(' + ')) : (Object.keys(mine.schedule || {}).length ? 'No specials' : 'Not set yet')}</p>
           </div>`;
       }).join('') : '';
       const ex = getExtras();
@@ -797,13 +797,17 @@
     });
   }
 
+  // "Ms. Carey", "Miss Carey" and "Mrs. Carey" are the same class.
+  const lastName = (n) => String(n || '').trim().toLowerCase().split(/\s+/).pop().replace(/'s$/, '');
+  const findClass = (n) => state.classrooms.find((c) => lastName(c.name) === lastName(n));
+
   function specialsSheet(p = {}, editId = null) {
     // Match a spoken class to one we already have, so it updates instead of duplicating.
     const existing = editId ? state.classrooms.find((c) => c.id === editId)
-      : (p.name ? state.classrooms.find((c) => c.name.toLowerCase() === String(p.name).toLowerCase()) : null);
+      : (p.name ? findClass(p.name) : null);
     const base = existing ? { ...(existing.schedule || {}) } : {};
     const sched = { ...base, ...(p.schedule || {}) };
-    const name = p.name || (existing && existing.name) || '';
+    const name = (existing && existing.name) || p.name || '';
     const id = existing ? existing.id : null;
     const dayRow = ([k, label]) => {
       const picked = sched[k] || [];
@@ -835,7 +839,7 @@
         if (list.length) schedule[k] = [...new Set(list)];
       }
       const nm = fd.get('name').trim();
-      const target = id || (state.classrooms.find((c) => c.name.toLowerCase() === nm.toLowerCase()) || {}).id || null;
+      const target = id || (findClass(nm) || {}).id || null;
       await api.saveClassroom({ name: nm, schedule, notes: fd.get('notes').trim() || null }, target);
       state.tab = 'specials';
       toast('Specials saved');

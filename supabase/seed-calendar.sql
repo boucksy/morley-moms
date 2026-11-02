@@ -40,3 +40,15 @@ from (values
 where not exists (
   select 1 from public.events e where e.title = v.title and e.starts_at = v.starts_at
 );
+
+-- Classes. Specials start empty; the group fills them in.
+insert into public.classrooms (name, schedule, created_by_name) values
+  ('Ms. Carey', '{}'::jsonb, 'Miranda'),
+  ('Ms. Walton', '{}'::jsonb, 'Miranda'),
+  ('Ms. Wilkinson', '{}'::jsonb, 'Miranda')
+on conflict do nothing;
+
+-- Spelling list, test 2026-11-04
+insert into public.spelling_lists (week_of, test_date, words, challenge_words, created_by_name)
+select date '2026-11-02', date '2026-11-04', array['self','selves','shelf','shelves','thief','thieves','half','halves','loaf','loaves','leaf','leaves','wife','wives','wolf','wolves','elf','elves','knife','knives','life','lives']::text[], array['before','please']::text[], 'Miranda'
+where not exists (select 1 from public.spelling_lists where test_date = date '2026-11-04');

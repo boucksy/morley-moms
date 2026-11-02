@@ -353,3 +353,5 @@ window.MM_DEMO_CALENDAR = [
   "id": "cal26"
  }
 ];
+window.MM_DEMO_CLASSES = ["Ms. Carey", "Ms. Walton", "Ms. Wilkinson"];
+window.MM_DEMO_SPELLING = [{"test_date": "2026-11-04", "week_of": "2026-11-02", "words": ["self", "selves", "shelf", "shelves", "thief", "thieves", "half", "halves", "loaf", "loaves", "leaf", "leaves", "wife", "wives", "wolf", "wolves", "elf", "elves", "knife", "knives", "life", "lives"], "challenge_words": ["before", "please"]}];
