@@ -6,6 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
+  const APP_VERSION = 34;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1594,6 +1595,7 @@
       <h2>${esc(state.me.display_name || 'Your account')}</h2>
       <p class="sub" style="color:var(--ink-2);margin:-8px 0 16px">${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}</p>
       ${install}
+      <p class="sub" style="color:var(--ink-2);font-size:13px;margin:0 0 12px">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
         <button class="btn btn-ghost" data-action="signout">Sign out</button>
         <button class="btn btn-ghost" data-action="close-sheet">Close</button>
@@ -1714,7 +1716,19 @@
 
   /* ---------------- start ---------------- */
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // Always look for a newer version when the app opens or comes back to the front,
+    // and reload once, quietly, when one has arrived.
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      const check = () => { try { reg.update(); } catch {} };
+      check();
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    }).catch(() => {});
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
+      if (document.querySelector('.sheet-backdrop')) return; // don't interrupt someone typing
+      location.reload();
+    });
   }
 
   (async function init() {

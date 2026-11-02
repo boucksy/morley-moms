@@ -1,6 +1,6 @@
 // Morley Moms service worker: makes the app installable and lets the
 // app shell open quickly. It never caches group data from Supabase.
-const CACHE = 'mm-shell-v33';
+const CACHE = 'mm-shell-v34';
 const SHELL = [
   './',
   'index.html',
@@ -26,6 +26,8 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// Network first, and always asking the server whether the file changed (GitHub
+// otherwise lets phones reuse a file for 10 minutes), so updates show up right away.
 // Network first (always the newest version), falling back to the cached
 // shell when offline. Only same-origin GETs are handled; Supabase requests
 // pass straight through and are never stored.
@@ -33,7 +35,7 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();
