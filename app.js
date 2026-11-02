@@ -663,7 +663,7 @@
       ${filledNote(p)}
       ${series ? `<p class="replace-note">Instead of: <strong>${esc(series.title)}</strong></p>` : ''}
       <form id="sheetForm">
-        <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Book fair volunteers"></label>
+        <label class="field ${p._filled && !p.title ? 'needs' : ''}"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p.title || '')}" placeholder="${p._filled && !p.title ? 'Add a short title' : 'e.g. Book fair volunteers'}"></label>
         <div class="field"><span>Type</span>
           <div class="seg">${CATS.map((c) => `<label><input type="radio" name="category" value="${c.id}" ${c.id === cat ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
         </div>
