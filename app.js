@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 37;
+  const APP_VERSION = 38;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -532,6 +532,7 @@
       const t = timeRange(ev);
       return `Every ${days}${t ? ' · ' + t : ''}${ev.repeat_until ? ' · until ' + fmtDay(parseDate(ev.repeat_until)) : ''}`;
     }
+    if (ev.category === 'homework' && !isRepeating(ev) && (ev.all_day || !timeRange(ev))) return `Due ${fmtDay(s)}`;
     if (ev.all_day) {
       const end = lastDayOf(ev);
       if (end > localDay(ev.starts_at)) return `${fmtDay(s)} – ${fmtDay(end)}`;
@@ -736,7 +737,7 @@
         </div>
         ${classPicker(p.classroom_id !== undefined ? p.classroom_id : (getMyClass() || ''))}
         <div class="row2">
-          <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span>${reps.length ? 'Starts' : 'Date'}</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
+          <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span id="dateLabel">${reps.length ? 'Starts' : (cat === 'homework' ? 'Due date' : 'Date')}</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
           <label class="field"><span>Last day <small>(optional)</small></span><input class="input" type="date" name="end_date" value="${esc(p.end_date || '')}"></label>
         </div>
         <div class="row2">
@@ -1752,6 +1753,10 @@
   });
 
   document.addEventListener('change', (e) => {
+    if (e.target && e.target.name === 'category') {
+      const l = document.getElementById('dateLabel');
+      if (l && !/Starts/.test(l.textContent)) l.textContent = e.target.value === 'homework' ? 'Due date' : 'Date';
+    }
     if (e.target && e.target.id === 'pinchZoom') { try { localStorage.setItem(PINCH_KEY, e.target.checked ? '1' : '0'); } catch {} applyZoom(); return; }
     if (e.target && e.target.id === 'myClass') { setMyClass(e.target.value); renderView(); }
   });

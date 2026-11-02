@@ -50,6 +50,7 @@ Rules:
 - Spelling list: use kind "spelling" and fill title (like "Unit 3 Lesson 10"), test_date, words (every spelling word once, in order, lower case) and challenge_words (only those under "Challenge Words"). Leave event fields null.
 - Anything else: use kind "event" and fill the event fields; leave words empty.
 - event.title: REQUIRED for events, never null. A short name (2 to 6 words), like "Turkey disguise due" or "PTO meeting". If the paper does not give the event a name, write a plain one from its main point using words from the text. Not a full sentence.
+- event.date: for homework or a project, use the DUE date (the day it must be turned in), never the day it was handed out. If both appear, use the due date.
 - event.category: pto = PTO meetings and events; school = school activities and announcements; homework = homework or a project the child must complete and turn in (anything with a due date for the child); noschool = days with no school; volunteer = asks for volunteers, donations or supplies; social = moms' outings; kids = kids' clubs or playdates; rides = pickups and drop-offs; null if unsure.
 - Dates: turn weekdays and "next Tuesday" into the real date relative to today. A due date is the event's date. Use null if no date is stated.
 - event.details: only useful extra facts that don't fit the other fields (what to bring, sign-up links, instructions), in at most two short sentences. null if there is nothing extra. Do not repeat the title, date, time or place.
