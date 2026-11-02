@@ -386,3 +386,8 @@ textarea.input { min-height: 90px; resize: vertical; }
 .sp-set { margin-top: 10px; background: var(--bg); border-radius: 14px; padding: 10px; }
 .sp-set .sp-status { margin: 0 0 8px; font-weight: 700; }
 .sp-ask-btns.small .sp-num { min-height: 42px; font-size: 15px; border-radius: 12px; }
+
+/* ---------- v8: keep two-up date/time fields inside the screen ---------- */
+.row2 > * { min-width: 0; }
+.row2 .input { min-width: 0; width: 100%; }
+input[type="date"].input, input[type="time"].input { min-height: 52px; }

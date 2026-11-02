@@ -107,6 +107,22 @@ drop trigger if exists events_author on public.events;
 create trigger events_author before insert on public.events
   for each row execute function public.set_author();
 
+-- Editing never changes who originally added something.
+create or replace function public.keep_author()
+returns trigger language plpgsql as $$
+begin
+  new.created_by := old.created_by;
+  new.created_by_name := old.created_by_name;
+  return new;
+end;
+$$;
+drop trigger if exists events_keep_author on public.events;
+create trigger events_keep_author before update on public.events
+  for each row execute function public.keep_author();
+drop trigger if exists spelling_keep_author on public.spelling_lists;
+create trigger spelling_keep_author before update on public.spelling_lists
+  for each row execute function public.keep_author();
+
 drop trigger if exists spelling_author on public.spelling_lists;
 create trigger spelling_author before insert on public.spelling_lists
   for each row execute function public.set_author();
@@ -137,11 +153,12 @@ drop policy if exists "members add events" on public.events;
 create policy "members add events" on public.events
   for insert to authenticated with check (public.is_member());
 
+-- Any member can fix an event (it's a shared calendar); only whoever
+-- added it, or an admin, can delete it.
 drop policy if exists "owner or admin edits events" on public.events;
-create policy "owner or admin edits events" on public.events
-  for update to authenticated
-  using (public.is_member() and (created_by = auth.uid() or public.is_admin()))
-  with check (public.is_member());
+drop policy if exists "members edit events" on public.events;
+create policy "members edit events" on public.events
+  for update to authenticated using (public.is_member()) with check (public.is_member());
 
 drop policy if exists "owner or admin deletes events" on public.events;
 create policy "owner or admin deletes events" on public.events
@@ -158,10 +175,9 @@ create policy "members add spelling" on public.spelling_lists
   for insert to authenticated with check (public.is_member());
 
 drop policy if exists "owner or admin edits spelling" on public.spelling_lists;
-create policy "owner or admin edits spelling" on public.spelling_lists
-  for update to authenticated
-  using (public.is_member() and (created_by = auth.uid() or public.is_admin()))
-  with check (public.is_member());
+drop policy if exists "members edit spelling" on public.spelling_lists;
+create policy "members edit spelling" on public.spelling_lists
+  for update to authenticated using (public.is_member()) with check (public.is_member());
 
 drop policy if exists "owner or admin deletes spelling" on public.spelling_lists;
 create policy "owner or admin deletes spelling" on public.spelling_lists

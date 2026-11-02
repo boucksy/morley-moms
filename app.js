@@ -100,12 +100,17 @@
       },
       async listEvents() { return delay([...db.events].sort((a, b) => a.starts_at.localeCompare(b.starts_at))); },
       async addEvent(row) { db.events.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name }); return delay(); },
+      async updateEvent(id, row) { Object.assign(db.events.find((e) => e.id === id), row); return delay(); },
       async deleteEvent(id) { db.events = db.events.filter((e) => e.id !== id); return delay(); },
       async listSpelling() { return delay([...db.spelling].sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of))); },
       async addSpelling(row, file) {
         const photo_path = file ? URL.createObjectURL(file) : null;
         db.spelling.push({ ...row, id: uid(), photo_path, created_by: 'u-me', created_by_name: state.me.display_name });
         return delay();
+      },
+      async updateSpelling(id, row, file) {
+        if (file) row.photo_path = URL.createObjectURL(file);
+        Object.assign(db.spelling.find((x) => x.id === id), row); return delay();
       },
       async deleteSpelling(row) { db.spelling = db.spelling.filter((s) => s.id !== row.id); return delay(); },
       async photoUrl(path) { return path; },
@@ -155,6 +160,7 @@
       },
       async listEvents() { return ok(await sb.from('events').select('*').order('starts_at')); },
       async addEvent(row) { ok(await sb.from('events').insert(row)); },
+      async updateEvent(id, row) { ok(await sb.from('events').update(row).eq('id', id)); },
       async deleteEvent(id) { ok(await sb.from('events').delete().eq('id', id)); },
       async listSpelling() { return ok(await sb.from('spelling_lists').select('*').order('test_date', { ascending: false, nullsFirst: false }).order('week_of', { ascending: false }).limit(30)); },
       async addSpelling(row, file) {
@@ -164,6 +170,14 @@
           row.photo_path = path;
         }
         ok(await sb.from('spelling_lists').insert(row));
+      },
+      async updateSpelling(id, row, file) {
+        if (file) {
+          const path = `${uid()}.jpg`;
+          ok(await sb.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false }));
+          row.photo_path = path;
+        }
+        ok(await sb.from('spelling_lists').update(row).eq('id', id));
       },
       async deleteSpelling(row) {
         if (row.photo_path) await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path]);
@@ -457,9 +471,8 @@
           ${ev.details ? `<p class="details">${linkify(ev.details)}</p>` : ''}
           <div class="actions">
             <button class="btn btn-ghost btn-small" data-action="ics" data-id="${esc(ev.id)}">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')} Add to calendar</button>
-            ${canEdit(ev) ? `<button class="btn btn-danger btn-small" data-action="del-event" data-id="${esc(ev.id)}">Delete</button>` : ''}
+            <button class="btn btn-ghost btn-small" data-action="edit-event" data-id="${esc(ev.id)}">${ICON.edit} Edit</button>
           </div>
-          ${ev.created_by_name ? `<p class="by">Added by ${esc(ev.created_by_name)}</p>` : ''}
         </div>
       </article>`;
   }
@@ -489,11 +502,27 @@
     return hit || '';
   }
 
-  function addEventSheet(p = {}) {
+  // Turn a saved event back into form values (in local time).
+  function eventToForm(ev) {
+    const s = new Date(ev.starts_at);
+    const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return {
+      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details,
+      date: isoDate(s),
+      time: ev.all_day ? '' : hhmm(s),
+      end_time: !ev.all_day && ev.ends_at ? hhmm(new Date(ev.ends_at)) : '',
+      end_date: ev.all_day && ev.ends_at && lastDayOf(ev) > localDay(ev.starts_at) ? isoDate(lastDayOf(ev)) : '',
+      repeat_days: ev.repeat_days || [], repeat_until: ev.repeat_until || '',
+    };
+  }
+
+  function addEventSheet(p = {}, editId = null) {
+    const editing = editId ? state.events.find((e) => String(e.id) === String(editId)) : null;
+    if (editing) p = eventToForm(editing);
     const cat = p.category || 'pto';
     const reps = p.repeat_days || [];
     openSheet(`
-      <h2>New event</h2>
+      <h2>${editing ? 'Edit event' : 'New event'}</h2>
       ${filledNote(p)}
       <form id="sheetForm">
         <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Book fair volunteers"></label>
@@ -516,8 +545,9 @@
         <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
         <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What to bring, sign-up links, anything else">${esc(p.details || '')}</textarea></label>
         <div class="sheet-actions">
-          <button class="btn btn-primary" type="submit">Post event</button>
+          <button class="btn btn-primary" type="submit">${editing ? 'Save changes' : 'Post event'}</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${editing && canEdit(editing) ? `<button class="btn btn-danger" type="button" data-action="del-event" data-id="${esc(editing.id)}">Delete this event</button>` : ''}
         </div>
       </form>`, async (fd) => {
       const date = fd.get('date');
@@ -531,7 +561,7 @@
       else if (!time && endDate && endDate > date) ends = parseDate(endDate);
       if (ends && ends < starts) throw new Error('The end is before the start. Check the times.');
       if (repeatDays.length && !fd.get('repeat_until')) throw new Error('Pick the last date it repeats until.');
-      await api.addEvent({
+      const row = {
         title: fd.get('title').trim(),
         category: fd.get('category'),
         starts_at: starts.toISOString(),
@@ -542,9 +572,10 @@
         location: fd.get('location').trim() || null,
         pickup_dropoff: fd.get('pickup_dropoff').trim() || null,
         details: fd.get('details').trim() || null,
-      });
+      };
+      if (editing) await api.updateEvent(editing.id, row); else await api.addEvent(row);
       state.tab = 'events'; state.filter = 'all';
-      toast('Event posted');
+      toast(editing ? 'Event updated' : 'Event posted');
     });
   }
 
@@ -620,7 +651,7 @@
               <p class="spell-date" style="margin-top:${next ? '8px' : '0'}">${esc(headline)}</p>
               ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
             </div>
-            ${canEdit(s) ? `<button class="btn btn-danger btn-small" data-action="del-spell" data-id="${esc(s.id)}">Delete</button>` : ''}
+            <button class="btn btn-ghost btn-small" data-action="edit-spell" data-id="${esc(s.id)}">${ICON.edit} Edit</button>
           </div>
           ${s.words && s.words.length ? `<div class="words">${s.words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>` : ''}
           ${s.challenge_words && s.challenge_words.length ? `
@@ -628,7 +659,6 @@
             <div class="words challenge">${s.challenge_words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>` : ''}
           ${s.notes ? `<p class="details">${linkify(s.notes)}</p>` : ''}
           ${s.photo_path ? `<div class="photo-loading" data-photo="${esc(s.photo_path)}">Loading photo…</div>` : ''}
-          ${s.created_by_name ? `<p class="by">Added by ${esc(s.created_by_name)}</p>` : ''}
         </article>`;
       }).join('')}`;
   }
@@ -657,12 +687,14 @@
 
   const filledNote = (p) => (p && p._filled ? `<div class="filled-note"><strong>Filled in for you.</strong> Check it over, fix anything that's off, then post.</div>` : '');
 
-  function addSpellingSheet(p = {}, photoFile = null) {
+  function addSpellingSheet(p = {}, photoFile = null, editId = null) {
+    const editing = editId ? state.spelling.find((x) => String(x.id) === String(editId)) : null;
+    if (editing) p = { ...editing };
     let attached = photoFile;
     const words = (p.words || []).join(', ');
     const challenge = (p.challenge_words || []).join(', ');
     openSheet(`
-      <h2>Spelling list</h2>
+      <h2>${editing ? 'Edit spelling list' : 'Spelling list'}</h2>
       ${filledNote(p)}
       <form id="sheetForm">
         <label class="field ${p._filled && !p.test_date ? 'needs' : ''}"><span>Test day</span><input class="input" type="date" name="test_date" required value="${esc(p.test_date || '')}">
@@ -671,31 +703,34 @@
         <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="Separated by commas or one per line">${esc(words)}</textarea></label>
         <label class="field"><span>Challenge words <small>(optional)</small></span><input class="input" name="challenge_words" maxlength="500" value="${esc(challenge)}" placeholder="e.g. neighbor, celebrate"></label>
         <div class="field"><span>Photo of the sheet <small>(optional)</small></span>
+          ${editing && editing.photo_path ? '<p class="hint" style="margin:0 0 8px">A photo is already attached. Add a new one only to replace it.</p>' : ''}
           <div id="photoSlot">${attached ? `<div class="attached">📷 Photo attached <button type="button" class="link-btn inline" data-action="drop-photo">Remove</button></div>` : '<input class="input" type="file" name="photo" accept="image/*">'}</div>
         </div>
         <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Anything else from the sheet">${esc(p.notes || '')}</textarea></label>
         <div class="sheet-actions">
-          <button class="btn btn-primary" type="submit">Post list</button>
+          <button class="btn btn-primary" type="submit">${editing ? 'Save changes' : 'Post list'}</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${editing && canEdit(editing) ? `<button class="btn btn-danger" type="button" data-action="del-spell" data-id="${esc(editing.id)}">Delete this list</button>` : ''}
         </div>
       </form>`, async (fd) => {
       const list = (v) => [...new Set(String(v || '').split(/[\n,]+/).map((w) => w.trim()).filter(Boolean))];
       const w = list(fd.get('words')).slice(0, 60);
       const raw = fd.get('photo');
       const file = attached || (raw && raw.size > 0 ? raw : null);
-      if (!w.length && !file) throw new Error('Add some words or a photo.');
+      if (!w.length && !file && !(editing && editing.photo_path)) throw new Error('Add some words or a photo.');
       const photo = file ? await shrinkImage(file) : null;
       const testDate = fd.get('test_date');
-      await api.addSpelling({
+      const row = {
         test_date: testDate,
         week_of: isoDate(mondayOf(parseDate(testDate))),
         title: fd.get('title').trim() || null,
         words: w,
         challenge_words: list(fd.get('challenge_words')).slice(0, 20),
         notes: fd.get('notes').trim() || null,
-      }, photo);
+      };
+      if (editing) await api.updateSpelling(editing.id, row, photo); else await api.addSpelling(row, photo);
       state.tab = 'spelling';
-      toast('Spelling list posted');
+      toast(editing ? 'Spelling list updated' : 'Spelling list posted');
     });
     const slot = $('#photoSlot');
     if (slot) slot.addEventListener('click', (e) => {
@@ -1274,14 +1309,16 @@
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
       else if (a === 'signout') { closeSheet(); await api.signOut(); state.me = null; state.signin = { step: 'email', email: '' }; renderSignIn(); }
       else if (a === 'ics') { const ev = state.events.find((x) => String(x.id) === el.dataset.id); if (ev) downloadIcs(ev); }
+      else if (a === 'edit-event') addEventSheet({}, el.dataset.id);
+      else if (a === 'edit-spell') addSpellingSheet({}, null, el.dataset.id);
       else if (a === 'del-event') {
         if (!confirm('Delete this event for everyone?')) return;
-        await api.deleteEvent(el.dataset.id); toast('Event deleted'); await refresh();
+        await api.deleteEvent(el.dataset.id); closeSheet(); toast('Event deleted'); await refresh();
       }
       else if (a === 'del-spell') {
         if (!confirm('Delete this spelling list for everyone?')) return;
         const row = state.spelling.find((x) => String(x.id) === el.dataset.id);
-        if (row) { await api.deleteSpelling(row); toast('List deleted'); await refresh(); }
+        if (row) { await api.deleteSpelling(row); closeSheet(); toast('List deleted'); await refresh(); }
       }
       else if (a === 'del-member') {
         if (!confirm(`Remove ${el.dataset.email} from the group? She won\u2019t be able to see anything anymore.`)) return;
