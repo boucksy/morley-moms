@@ -7,4 +7,4 @@ out/
 backup/
 
 # Private preload with kids names: never commit
-*.private.sql
+*.private.*

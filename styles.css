@@ -391,3 +391,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 .row2 > * { min-width: 0; }
 .row2 .input { min-width: 0; width: 100%; }
 input[type="date"].input, input[type="time"].input { min-height: 52px; }
+
+/* ---------- v9: challenge words match the light-blue buttons ---------- */
+.words.challenge .word,
+.spell.current .words.challenge .word { background: var(--blue-soft); border: 2px solid var(--blue-soft); color: var(--blue); }

@@ -66,7 +66,7 @@
       members: [],
       // The real 2026–27 Morley calendar (demo-calendar.js).
       events: [
-        ...(window.MM_DEMO_CALENDAR || []).map((e) => {
+        ...[...(window.MM_DEMO_CALENDAR || []), ...(window.MM_DEMO_RIDES || [])].map((e) => {
           const allDay = !e.start;
           const starts = allDay ? parseDate(e.date) : new Date(`${e.date}T${e.start}`);
           const ends = allDay ? (e.last_day ? parseDate(e.last_day) : null) : (e.end ? new Date(`${e.date}T${e.end}`) : null);
@@ -248,7 +248,7 @@
     const card = s.step === 'email'
       ? `
         <h2>Sign in</h2>
-        <p class="sub">Enter the email you gave the group. We'll send you a 6-digit code — no password needed.</p>
+        <p class="sub">We’ll email you a 6-digit code.</p>
         ${demo}
         <form id="emailForm" novalidate>
           <label class="field"><span>Email</span>
@@ -274,10 +274,9 @@
         <div class="signin-hero">
           <span class="logo-mark big">MM</span>
           <h1>Morley Moms</h1>
-          <p>Our private corner for school stuff, plans and fun.</p>
         </div>
         <div class="signin-card">${card}</div>
-        <p class="signin-foot">Members only. You'll stay signed in on this phone.</p>
+        
       </div>`;
     const f = $('#emailForm') || $('#codeForm');
     const input = f.querySelector('input');
@@ -487,11 +486,11 @@
     const filters = [{ id: 'all', label: 'All' }, ...CATS].map((c) =>
       `<button class="filter ${state.filter === c.id ? 'on' : ''}" data-action="filter" data-filter="${c.id}">${c.label}</button>`).join('');
     return `
-      <div class="page-head"><div><h2>What's coming up</h2><p>PTO, school days off, rides and fun plans.</p></div></div>
+      <div class="page-head"><div><h2>What's coming up</h2></div></div>
       <div class="filters" role="toolbar" aria-label="Filter events">${filters}</div>
       ${weekly.length ? `<p class="section-label">Every week</p>${weekly.map(eventCard).join('')}<p class="section-label">Coming up</p>` : ''}
       ${upcoming.length ? upcoming.map(eventCard).join('') : `
-        <div class="card empty"><p class="big">Nothing on the calendar</p><p>Tap the + button to add an event.</p></div>`}
+        <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
       ${past.length ? `
         <button class="btn btn-ghost btn-small" style="margin-top:8px" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
@@ -531,7 +530,7 @@
         </div>
         <div class="row2">
           <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span>${reps.length ? 'Starts' : 'Date'}</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
-          <label class="field"><span>Last day <small>(if more than one)</small></span><input class="input" type="date" name="end_date" value="${esc(p.end_date || '')}"></label>
+          <label class="field"><span>Last day <small>(optional)</small></span><input class="input" type="date" name="end_date" value="${esc(p.end_date || '')}"></label>
         </div>
         <div class="row2">
           <label class="field"><span>From <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
@@ -539,7 +538,7 @@
         </div>
         <div class="field"><span>Repeats every week? <small>(optional)</small></span>
           <div class="seg">${['mon', 'tue', 'wed', 'thu', 'fri'].map((k) => `<label><input type="checkbox" name="repeat_days" value="${k}" ${reps.includes(k) ? 'checked' : ''}><span>${DOW_SHORT[k]}</span></label>`).join('')}</div>
-          <label class="field" style="margin:10px 0 0"><span>Until <small>(skips days with no school)</small></span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
+          <label class="field" style="margin:10px 0 0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
         </div>
         <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. Morley Library"></label>
         <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
@@ -626,7 +625,7 @@
   function spellingView() {
     if (!state.spelling.length) {
       return `<div class="page-head"><div><h2>Spelling words</h2></div></div>
-        <div class="card empty"><p class="big">No lists yet</p><p>Tap + and snap the Friday-folder sheet, or just say the words.</p></div>`;
+        <div class="card empty"><p class="big">No lists yet</p></div>`;
     }
     const todayIso = isoDate(startOfToday());
     const upcoming = state.spelling.filter((s) => s.test_date && s.test_date >= todayIso).sort((a, b) => a.test_date.localeCompare(b.test_date));
@@ -636,8 +635,8 @@
       .sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of));
     const ordered = [...upcoming, ...past];
     return `
-      <div class="page-head"><div><h2>Spelling words</h2><p>Next test on top.</p></div></div>
-      ${upcoming.length ? '' : '<p class="hint" style="margin:-4px 2px 12px">No upcoming tests posted yet.</p>'}
+      <div class="page-head"><div><h2>Spelling words</h2></div></div>
+      ${upcoming.length ? '' : ''}
       ${ordered.map((s, i) => {
         const next = s.id === nextId;
         const countdown = s.test_date ? testLabel(s.test_date) : '';
@@ -685,7 +684,7 @@
     } catch { return file; }
   }
 
-  const filledNote = (p) => (p && p._filled ? `<div class="filled-note"><strong>Filled in for you.</strong> Check it over, fix anything that's off, then post.</div>` : '');
+  const filledNote = (p) => (p && p._filled ? `<div class="filled-note">Check it over, then post.</div>` : '');
 
   function addSpellingSheet(p = {}, photoFile = null, editId = null) {
     const editing = editId ? state.spelling.find((x) => String(x.id) === String(editId)) : null;
@@ -698,12 +697,12 @@
       ${filledNote(p)}
       <form id="sheetForm">
         <label class="field ${p._filled && !p.test_date ? 'needs' : ''}"><span>Test day</span><input class="input" type="date" name="test_date" required value="${esc(p.test_date || '')}">
-          ${p._filled && !p.test_date ? '<p class="hint">Couldn’t find the test day. Pick it here.</p>' : ''}</label>
+          ${p._filled && !p.test_date ? '' : ''}</label>
         <label class="field"><span>Unit / pattern <small>(optional)</small></span><input class="input" name="title" maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Unit 5 — long e"></label>
         <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="Separated by commas or one per line">${esc(words)}</textarea></label>
         <label class="field"><span>Challenge words <small>(optional)</small></span><input class="input" name="challenge_words" maxlength="500" value="${esc(challenge)}" placeholder="e.g. neighbor, celebrate"></label>
         <div class="field"><span>Photo of the sheet <small>(optional)</small></span>
-          ${editing && editing.photo_path ? '<p class="hint" style="margin:0 0 8px">A photo is already attached. Add a new one only to replace it.</p>' : ''}
+          ${editing && editing.photo_path ? '<p class="hint" style="margin:0 0 8px">A new photo replaces the current one.</p>' : ''}
           <div id="photoSlot">${attached ? `<div class="attached">📷 Photo attached <button type="button" class="link-btn inline" data-action="drop-photo">Remove</button></div>` : '<input class="input" type="file" name="photo" accept="image/*">'}</div>
         </div>
         <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Anything else from the sheet">${esc(p.notes || '')}</textarea></label>
@@ -828,13 +827,12 @@
         </label>`;
       let body = '';
       if (!mine) {
-        body = '<p class="hint">Pick your class to see today’s and tomorrow’s specials up top.</p>';
+        body = '';
       } else if (first && rotationDay(first, mine.id, off) === null) {
         body = `
           <div class="sp-ask">
             <p class="sp-ask-q">What day is ${esc(mine.name)}’s class on ${esc(whenWord)}?</p>
             ${dayButtons(mine.id)}
-            <p class="sp-ask-hint">Set it once. The app counts school days from there and skips days off.</p>
           </div>`;
       } else {
         const ex = getExtras();
@@ -850,9 +848,9 @@
             </div>`;
         }).join('')}</div>
         <button type="button" class="sp-extras" data-action="edit-extras">${ex.days.length
-          ? `${esc(ex.label)}: ${esc(ex.days.map((k) => WEEK.find((w) => w[0] === k)[1].slice(0, 3)).join(', '))} <small>· only on this phone · edit</small>`
-          : `+ Add ${esc(ex.label.toLowerCase())} days <small>· only on this phone</small>`}</button>
-        <button type="button" class="sp-fix" data-action="fix-day" data-class="${esc(mine.id)}">Not right? Set ${esc(mine.name)}’s day number</button>`;
+          ? `${esc(ex.label)}: ${esc(ex.days.map((k) => WEEK.find((w) => w[0] === k)[1].slice(0, 3)).join(', '))} <small>· private · edit</small>`
+          : `+ ${esc(ex.label)} days <small>· private</small>`}</button>
+        <button type="button" class="sp-fix" data-action="fix-day" data-class="${esc(mine.id)}">Change day number</button>`;
       }
       hero = `<div class="card sp-hero">${picker}${body}</div>`;
     }
@@ -861,7 +859,7 @@
       const num = first ? rotationDay(first, c.id, off) : null;
       const status = !first ? '' : num
         ? `<p class="sp-status">${isToday ? 'Today' : esc(fmtDay(first))}: <strong>Day ${num}</strong> <button type="button" class="link-btn inline" data-action="fix-day" data-class="${esc(c.id)}">change</button></p>`
-        : `<div class="sp-set"><p class="sp-status">What day is this class on ${esc(whenWord)}?</p>${dayButtons(c.id, 'light small')}</div>`;
+        : `<div class="sp-set"><p class="sp-status">Day ${esc(whenWord)}?</p>${dayButtons(c.id, 'light small')}</div>`;
       return `
         <article class="card sp-room ${c.id === myId ? 'mine' : ''}">
           <div class="spell-head">
@@ -875,15 +873,14 @@
             ${ROT.map((n) => `<div class="sp-row ${num && String(num) === n ? 'today' : ''}"><span class="sp-d">Day ${n}</span><span class="sp-list">${specialChips((c.schedule || {})[n])}</span>${num && String(num) === n ? `<span class="sp-today">${isToday ? 'Today' : 'Next'}</span>` : ''}</div>`).join('')}
           </div>
           ${c.notes ? `<p class="details">${linkify(c.notes)}</p>` : ''}
-          ${canEdit(c) ? `<button class="link-btn inline danger" data-action="del-class" data-id="${esc(c.id)}" style="margin-top:12px">Delete this class</button>` : ''}
         </article>`;
     };
 
     return `
-      <div class="page-head"><div><h2>Specials</h2><p>Library, music, art and gym. Each class has its own Day 1–4 rotation.</p></div></div>
+      <div class="page-head"><div><h2>Specials</h2></div></div>
       ${hero}
       ${rooms.length ? rooms.map(roomCard).join('') : `
-        <div class="card empty"><p class="big">No classes yet</p><p>Tap + and say something like “Ms. Carey: day 1 art, day 2 gym, day 3 music, day 4 library.”</p></div>`}`;
+        <div class="card empty"><p class="big">No classes yet</p></div>`}`;
   }
 
   async function setRotationDay(classId, dateIso, n) {
@@ -900,7 +897,7 @@
     const cur = rotationDay(d, c.id);
     openSheet(`
       <h2>${esc(c.name)}’s day number</h2>
-      <p class="qa-sub">${esc(dayLabel(d))}${cur ? ` the app thinks it’s <strong>Day ${cur}</strong>` : ''}. If the school says otherwise, pick the right number. Everything after it follows.</p>
+      <p class="qa-sub">${esc(dayLabel(d))}${cur ? `: Day ${cur}` : ''}</p>
       <div class="sp-ask-btns light">${ROT.map((n) => `<button type="button" class="sp-num ${String(cur) === n ? 'on' : ''}" data-action="set-day" data-class="${esc(c.id)}" data-date="${isoDate(d)}" data-day="${n}">Day ${n}</button>`).join('')}</div>
       <div class="sheet-actions" style="margin-top:16px"><button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button></div>`);
   }
@@ -909,7 +906,7 @@
     const ex = getExtras();
     openSheet(`
       <h2>Just for my kid</h2>
-      <p class="qa-sub">For a program only some kids go to, like enrichment. This is saved only on your phone. Nobody else in the group sees it.</p>
+      <p class="qa-sub">Saved only on your phone.</p>
       <form id="sheetForm">
         <label class="field"><span>What it’s called</span><input class="input" name="label" required maxlength="30" value="${esc(ex.label)}"></label>
         <div class="field"><span>Which days?</span>
@@ -950,7 +947,7 @@
     openSheet(`
       <h2>${id ? 'Update specials' : 'Class specials'}</h2>
       ${filledNote(p)}
-      ${p._filled && existing ? `<p class="hint" style="margin:-8px 0 14px">Updating ${esc(existing.name)}. Days you didn’t mention stay the same.</p>` : ''}
+      ${p._filled && existing ? `` : ''}
       <form id="sheetForm">
         <label class="field ${p._filled && !name ? 'needs' : ''}"><span>Class</span>
           <input class="input" name="name" required maxlength="60" value="${esc(name)}" placeholder="e.g. Ms. Carey" list="classList">
@@ -961,6 +958,7 @@
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Save specials</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${existing && canEdit(existing) ? `<button class="btn btn-danger" type="button" data-action="del-class" data-id="${esc(existing.id)}">Delete this class</button>` : ''}
         </div>
       </form>`, async (fd) => {
       const schedule = {};
@@ -990,7 +988,6 @@
     const canTalk = !!SpeechRec || canRecord;
     openSheet(`
       <h2>What are we adding?</h2>
-      <p class="qa-sub">Say it like you'd text it. The app sorts out if it's spelling, specials or an event.</p>
       ${canTalk ? `
         <div class="qa-mic">
           <button type="button" class="mic" data-action="mic" aria-label="Tap to talk">${ICON.mic}</button>
@@ -1002,7 +999,6 @@
       <label class="btn btn-yellow qa-photo">${ICON.camera} Snap the paper
         <input type="file" id="qaPhoto" accept="image/*" hidden>
       </label>
-      <p class="hint" style="text-align:center">Works great for the Friday-folder spelling sheet or a flyer.</p>
       <div id="qaBusy" class="qa-busy" hidden><div class="bar"><span></span></div><p>Reading the paper…</p></div>
       <div class="qa-examples">
         <p class="words-label">Try saying</p>
@@ -1011,7 +1007,7 @@
         <p>“Ms. Carey: day 1 art, day 2 gym, day 3 music, day 4 library.”</p>
         <p>“Today is day 3.”</p>
       </div>
-      <div class="qa-manual">Rather fill it in yourself?
+      <div class="qa-manual">Or fill it in:
         <button type="button" class="link-btn inline" data-action="manual-event">Event</button> ·
         <button type="button" class="link-btn inline" data-action="manual-spelling">Spelling</button> ·
         <button type="button" class="link-btn inline" data-action="manual-specials">Specials</button>
@@ -1028,7 +1024,7 @@
 
   function micDone() {
     const box = $('#qaText');
-    micUi('idle', box && box.value.trim() ? 'Got it. Tap “Fill it in”, or tap the mic to add more.' : 'Tap to talk');
+    micUi('idle', box && box.value.trim() ? 'Got it.' : 'Tap to talk');
   }
 
   function toggleMic() {
@@ -1065,7 +1061,7 @@
       };
       recognizer.onend = () => { if (recognizer) { recognizer = null; micDone(); } };
       recognizer.start();
-      micUi('listening', 'Listening… tap again when you’re done');
+      micUi('listening', 'Listening… tap to stop');
     } catch {
       recognizer = null;
       if (canRecord) { preferRecorder = true; startRecorder(); }
@@ -1106,7 +1102,7 @@
     const started = Date.now();
     const tick = () => {
       const sec = Math.floor((Date.now() - started) / 1000);
-      micUi('listening', `Listening… 0:${String(sec).padStart(2, '0')} · tap when you’re done`);
+      micUi('listening', `Listening… 0:${String(sec).padStart(2, '0')}`);
       if (sec >= 59 && recorder) recorder.stop();
     };
     tick();
@@ -1181,8 +1177,8 @@
   function membersView() {
     const admin = state.me.is_admin;
     return `
-      <div class="page-head"><div><h2>Members</h2><p>${state.members.length} Morley Moms${admin ? ' · you\u2019re an admin' : ''}</p></div></div>
-      ${admin ? `<p class="hint" style="margin:-4px 2px 12px">Only people on this list can sign in. Tap + to add someone.</p>` : ''}
+      <div class="page-head"><div><h2>Members</h2><p>${state.members.length} members</p></div></div>
+      ${admin ? `` : ''}
       <div class="card" style="padding:4px 16px">
         ${state.members.map((m) => `
           <div class="member">
@@ -1201,7 +1197,7 @@
         <label class="field"><span>Name</span><input class="input" name="display_name" required maxlength="60" placeholder="e.g. Jess"></label>
         <label class="field"><span>Email</span><input class="input" type="email" name="email" required autocapitalize="off" inputmode="email" placeholder="the email she'll sign in with"></label>
         <label class="check"><input type="checkbox" name="is_admin"> Make her an admin too</label>
-        <p class="hint" style="margin:-6px 0 16px">Then send her the app link. She signs in with this email and a 6-digit code.</p>
+        
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Add to the group</button>
           <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
@@ -1303,7 +1299,7 @@
       else if (a === 'fix-day') fixDaySheet(el.dataset.class);
       else if (a === 'del-class') {
         if (!confirm('Delete this class and its specials for everyone?')) return;
-        await api.deleteClassroom(el.dataset.id); toast('Class deleted'); await refresh();
+        await api.deleteClassroom(el.dataset.id); closeSheet(); toast('Class deleted'); await refresh();
       }
       else if (a === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; closeSheet(); }
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
