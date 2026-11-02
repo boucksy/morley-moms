@@ -294,11 +294,12 @@
       e.preventDefault();
       const btn = f.querySelector('button[type=submit]');
       btn.disabled = true;
+      const label = btn.textContent; btn.textContent = s.step === 'email' ? 'Sending…' : 'Checking…';
       try {
         if (s.step === 'email') {
           const email = input.value.trim().toLowerCase();
           if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('That email doesn\u2019t look quite right.');
-          await api.sendCode(email);
+          await Promise.race([api.sendCode(email), new Promise((_, rej) => setTimeout(() => rej(new Error('That\u2019s taking too long. Wait a minute, check your spam folder, then try again.')), 30000))]);
           s.email = email; s.step = 'code';
           renderSignIn();
         } else {
@@ -308,7 +309,7 @@
           await afterSignIn();
         }
       } catch (ex) {
-        btn.disabled = false;
+        btn.disabled = false; btn.textContent = label;
         renderSignIn(friendlyAuthError(ex));
       }
     });
