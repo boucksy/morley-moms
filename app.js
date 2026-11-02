@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 35;
+  const APP_VERSION = 36;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -544,7 +544,10 @@
   // ---- which class an item is for ----
   const classById = (id) => state.classrooms.find((c) => c.id === id);
   const classTag = (id) => { const c = id && classById(id); return c ? `${c.name}\u2019s class` : ''; };
-  const classMeta = (id) => (classTag(id) ? `<p class="meta">${ICON.users}<span>${esc(classTag(id))}</span></p>` : '');
+  const classMeta = (id) => {
+    if (!state.classrooms.length) return '';
+    return `<p class="meta">${ICON.users}<span>${esc(classTag(id) || 'Everyone')}</span></p>`;
+  };
   // Items for one class are hidden from moms who picked a different class. Items for everyone always show.
   const forMe = (item) => !item.classroom_id || !getMyClass() || item.classroom_id === getMyClass();
   const classPicker = (selected, mine = true) => state.classrooms.length ? `
@@ -993,6 +996,13 @@
   const WEEK = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday']];
   const ROT = ['1', '2', '3', '4'];
   const COMMON_SPECIALS = ['Library', 'Music', 'Art', 'Gym'];
+  const PINCH_KEY = 'mm.pinchZoom';
+  const pinchOn = () => { try { return localStorage.getItem(PINCH_KEY) === '1'; } catch { return false; } };
+  setTimeout(() => applyZoom(), 0);
+  function applyZoom() {
+    const m = document.querySelector('meta[name=viewport]');
+    if (m) m.setAttribute('content', 'width=device-width, initial-scale=1, viewport-fit=cover' + (pinchOn() ? '' : ', maximum-scale=1, user-scalable=no'));
+  }
   const MY_CLASS_KEY = 'mm.myClassroom';
   const getMyClass = () => { try { return localStorage.getItem(MY_CLASS_KEY) || ''; } catch { return ''; } };
   // Private extras (like an enrichment pull-out) live only on this phone,
@@ -1630,6 +1640,7 @@
       <h2>${esc(state.me.display_name || 'Your account')}</h2>
       <p class="sub" style="color:var(--ink-2);margin:-8px 0 16px">${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}</p>
       ${install}
+      <label class="check-row" style="display:flex;gap:10px;align-items:center;margin:0 0 12px"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
       <p class="sub" style="color:var(--ink-2);font-size:13px;margin:0 0 12px">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
         <button class="btn btn-ghost" data-action="signout">Sign out</button>
@@ -1743,6 +1754,7 @@
   });
 
   document.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'pinchZoom') { try { localStorage.setItem(PINCH_KEY, e.target.checked ? '1' : '0'); } catch {} applyZoom(); return; }
     if (e.target && e.target.id === 'myClass') { setMyClass(e.target.value); renderView(); }
   });
 
