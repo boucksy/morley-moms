@@ -150,6 +150,60 @@ create policy "owner or admin deletes spelling" on public.spelling_lists
   for delete to authenticated
   using (public.is_member() and (created_by = auth.uid() or public.is_admin()));
 
+-- ---------- Classrooms & specials ----------
+-- One row per classroom. schedule looks like:
+--   {"mon":["PE"],"tue":["Art"],"wed":["PE"],"thu":["Music"],"fri":["Library"]}
+create table if not exists public.classrooms (
+  id              uuid primary key default gen_random_uuid(),
+  name            text not null check (char_length(name) between 1 and 60),
+  schedule        jsonb not null default '{}'::jsonb,
+  notes           text check (char_length(notes) <= 500),
+  created_by      uuid references auth.users(id) on delete set null,
+  created_by_name text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+create unique index if not exists classrooms_name_idx on public.classrooms (lower(name));
+
+drop trigger if exists classrooms_author on public.classrooms;
+create trigger classrooms_author before insert on public.classrooms
+  for each row execute function public.set_author();
+
+create or replace function public.touch_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  new.created_by := old.created_by;           -- who added it can't be changed
+  new.created_by_name := old.created_by_name;
+  return new;
+end;
+$$;
+drop trigger if exists classrooms_touch on public.classrooms;
+create trigger classrooms_touch before update on public.classrooms
+  for each row execute function public.touch_updated_at();
+
+alter table public.classrooms enable row level security;
+revoke all on public.classrooms from anon;
+
+-- Any member can add a class or update its specials (it's a shared job);
+-- only whoever added it, or an admin, can delete it.
+drop policy if exists "members read classrooms" on public.classrooms;
+create policy "members read classrooms" on public.classrooms
+  for select to authenticated using (public.is_member());
+
+drop policy if exists "members add classrooms" on public.classrooms;
+create policy "members add classrooms" on public.classrooms
+  for insert to authenticated with check (public.is_member());
+
+drop policy if exists "members update classrooms" on public.classrooms;
+create policy "members update classrooms" on public.classrooms
+  for update to authenticated using (public.is_member()) with check (public.is_member());
+
+drop policy if exists "owner or admin deletes classrooms" on public.classrooms;
+create policy "owner or admin deletes classrooms" on public.classrooms
+  for delete to authenticated
+  using (public.is_member() and (created_by = auth.uid() or public.is_admin()));
+
 -- ---------- Private photo storage ----------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('spelling-photos', 'spelling-photos', false, 5242880, array['image/jpeg','image/png','image/webp','image/heic'])

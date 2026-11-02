@@ -44,6 +44,8 @@
     users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.6c2.2.4 3.6 2 4 4.6"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+    star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
@@ -71,6 +73,10 @@
         { id: 'e4', title: 'Moms\u2019 coffee + walk', category: 'social', starts_at: at(12, 9, 0), all_day: false, location: 'Holmes Lake trailhead', pickup_dropoff: '', details: 'Strollers welcome. Coffee after!', created_by: 'u-tanya', created_by_name: 'Tanya' },
         { id: 'e5', title: 'No school — teacher workday', category: 'kids', starts_at: day(16), all_day: true, location: '', pickup_dropoff: '', details: 'Playdate at the park if weather is nice?', created_by: 'u-priya', created_by_name: 'Priya' },
         { id: 'e0', title: 'Halloween parade', category: 'school', starts_at: at(-3, 13, 30), all_day: false, location: 'School playground', pickup_dropoff: '', details: '', created_by: 'u-jess', created_by_name: 'Jess' },
+      ],
+      classrooms: [
+        { id: 'c1', name: 'Mrs. Smith', schedule: { mon: ['PE'], tue: ['Art'], wed: ['PE'], thu: ['Music'], fri: ['Library'] }, notes: '', created_by: 'u-jess', created_by_name: 'Jess' },
+        { id: 'c2', name: 'Mr. Lee', schedule: { mon: ['Music'], tue: ['PE'], wed: ['Library'], thu: ['Art'], fri: ['PE'] }, notes: 'Library books due back on Wednesday.', created_by: 'u-priya', created_by_name: 'Priya' },
       ],
       spelling: [
         { id: 's1', week_of: isoDate(monday), test_date: isoDate(addDaysTo(monday, 3)), title: 'Unit 4 — long a', words: ['rain', 'play', 'gate', 'train', 'great', 'eight', 'stay', 'paint', 'chase', 'weigh'], challenge_words: ['neighbor', 'celebrate'], notes: 'Practice sheet is due with the test.', photo_path: null, created_by: 'u-priya', created_by_name: 'Priya' },
@@ -107,6 +113,16 @@
       },
       async deleteSpelling(row) { db.spelling = db.spelling.filter((s) => s.id !== row.id); return delay(); },
       async photoUrl(path) { return path; },
+      async transcribe() { throw new Error('Voice on iPhone works once the app is connected (see setup step 8). Type it for now.'); },
+      async listClassrooms() { return delay([...db.classrooms].sort((a, b) => a.name.localeCompare(b.name))); },
+      async saveClassroom(row, id) {
+        const clash = db.classrooms.find((c) => c.name.toLowerCase() === row.name.toLowerCase() && c.id !== id);
+        if (clash) throw new Error('That class is already in the list.');
+        if (id) Object.assign(db.classrooms.find((c) => c.id === id), row);
+        else db.classrooms.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name });
+        return delay();
+      },
+      async deleteClassroom(id) { db.classrooms = db.classrooms.filter((c) => c.id !== id); return delay(); },
       async listMembers() { return delay([...db.members].sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''))); },
       async addMember(m) {
         if (db.members.find((x) => x.email === m.email)) throw new Error('That email is already on the list.');
@@ -155,6 +171,20 @@
         const { data } = await sb.storage.from(PHOTO_BUCKET).createSignedUrl(path, 60 * 60);
         return data && data.signedUrl;
       },
+      async transcribe(blob) {
+        const ext = /mp4|m4a|aac/.test(blob.type) ? 'm4a' : /webm/.test(blob.type) ? 'webm' : /ogg/.test(blob.type) ? 'ogg' : 'm4a';
+        const fd = new FormData();
+        fd.append('audio', blob, `speech.${ext}`);
+        const { data, error } = await sb.functions.invoke('transcribe', { body: fd });
+        if (error) throw new Error('Couldn\u2019t catch that. Tap the mic and try again.');
+        return (data && data.text) || '';
+      },
+      async listClassrooms() { return ok(await sb.from('classrooms').select('*').order('name')); },
+      async saveClassroom(row, id) {
+        const { error } = id ? await sb.from('classrooms').update(row).eq('id', id) : await sb.from('classrooms').insert(row);
+        if (error) throw new Error(error.code === '23505' ? 'That class is already in the list.' : error.message);
+      },
+      async deleteClassroom(id) { ok(await sb.from('classrooms').delete().eq('id', id)); },
       async listMembers() { return ok(await sb.from('members').select('*').order('display_name')); },
       async addMember(m) {
         const { error } = await sb.from('members').insert(m);
@@ -174,6 +204,7 @@
     events: [],
     spelling: [],
     members: [],
+    classrooms: [],
     signin: { step: 'email', email: '' },
   };
   const CATS = [
@@ -303,6 +334,7 @@
     const tabs = [
       { id: 'events', label: 'Events', icon: ICON.calendar },
       { id: 'spelling', label: 'Spelling', icon: ICON.book },
+      { id: 'specials', label: 'Specials', icon: ICON.star },
       { id: 'members', label: 'Members', icon: ICON.users },
     ];
     $('#tabbar').innerHTML = tabs.map((t) => `
@@ -315,8 +347,8 @@
 
   async function refresh() {
     try {
-      const [events, spelling, members] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers()]);
-      Object.assign(state, { events, spelling, members });
+      const [events, spelling, members, classrooms] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms()]);
+      Object.assign(state, { events, spelling, members, classrooms });
     } catch (ex) {
       toast('Couldn\u2019t load the latest. Check your connection.');
     }
@@ -328,6 +360,7 @@
     if (!view) return;
     if (state.tab === 'events') view.innerHTML = eventsView();
     if (state.tab === 'spelling') { view.innerHTML = spellingView(); loadPhotos(); }
+    if (state.tab === 'specials') view.innerHTML = specialsView();
     if (state.tab === 'members') view.innerHTML = membersView();
     window.scrollTo(0, 0);
   }
@@ -568,21 +601,152 @@
     });
   }
 
+  /* ---------------- specials ---------------- */
+  const WEEK = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday']];
+  const COMMON_SPECIALS = ['PE', 'Art', 'Music', 'Library', 'STEM', 'Tech', 'Guidance', 'Spanish'];
+  const SPECIAL_TIPS = { PE: 'Wear sneakers 👟', Library: 'Return library books 📚', Music: '', Art: 'Wear clothes that can get messy 🎨' };
+  const MY_CLASS_KEY = 'mm.myClassroom';
+  const getMyClass = () => { try { return localStorage.getItem(MY_CLASS_KEY) || ''; } catch { return ''; } };
+  const setMyClass = (id) => { try { if (id) localStorage.setItem(MY_CLASS_KEY, id); else localStorage.removeItem(MY_CLASS_KEY); } catch {} };
+
+  // Next school days (skips weekends): today if it's a weekday, then the next one.
+  function schoolDays() {
+    const out = []; const d = startOfToday();
+    while (out.length < 2) {
+      const dow = d.getDay();
+      if (dow >= 1 && dow <= 5) out.push(new Date(d));
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+  const keyOf = (d) => WEEK[d.getDay() - 1][0];
+  const dayLabel = (d) => {
+    const diff = Math.round((d - startOfToday()) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Tomorrow';
+    return d.toLocaleDateString(undefined, { weekday: 'long' });
+  };
+
+  function specialChips(list) {
+    return list && list.length ? list.map((x) => `<span class="sp-chip">${esc(x)}</span>`).join('') : '<span class="sp-none">—</span>';
+  }
+
+  function specialsView() {
+    const rooms = state.classrooms;
+    const myId = getMyClass();
+    const mine = rooms.find((c) => c.id === myId);
+    let hero = '';
+    if (rooms.length) {
+      const picker = `
+        <label class="field my-class"><span>My kid’s class</span>
+          <select class="input" id="myClass">
+            <option value="">Choose a class…</option>
+            ${rooms.map((c) => `<option value="${esc(c.id)}" ${c.id === myId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+          </select>
+        </label>`;
+      const days = mine ? schoolDays().map((d) => {
+        const list = (mine.schedule && mine.schedule[keyOf(d)]) || [];
+        const tips = list.map((x) => SPECIAL_TIPS[x]).filter(Boolean);
+        return `
+          <div class="sp-day">
+            <p class="sp-when">${esc(dayLabel(d))} <small>${esc(d.toLocaleDateString(undefined, { weekday: 'short' }))}</small></p>
+            <p class="sp-what">${list.length ? esc(list.join(' + ')) : 'No specials'}</p>
+            ${tips.length ? `<p class="sp-tip">${esc(tips.join(' · '))}</p>` : ''}
+          </div>`;
+      }).join('') : '';
+      hero = `<div class="card sp-hero">${picker}${mine ? `<div class="sp-days">${days}</div>` : '<p class="hint">Pick your class to see today’s and tomorrow’s specials up top.</p>'}</div>`;
+    }
+    return `
+      <div class="page-head"><div><h2>Specials</h2><p>PE, art, music, library… by class.</p></div></div>
+      ${hero}
+      ${rooms.length ? rooms.map((c) => `
+        <article class="card sp-room ${c.id === myId ? 'mine' : ''}">
+          <div class="spell-head">
+            <h3 class="sp-name">${esc(c.name)}${c.id === myId ? ' <span class="chip chip-volunteer">My class</span>' : ''}</h3>
+            <div class="actions" style="margin:0">
+              <button class="btn btn-ghost btn-small" data-action="edit-class" data-id="${esc(c.id)}">${ICON.edit} Edit</button>
+            </div>
+          </div>
+          <div class="sp-week">
+            ${WEEK.map(([k, label]) => `<div class="sp-row ${mine && c.id === myId && schoolDays()[0] && keyOf(schoolDays()[0]) === k && startOfToday().getDay() >= 1 && startOfToday().getDay() <= 5 ? 'today' : ''}"><span class="sp-d">${label.slice(0, 3)}</span><span class="sp-list">${specialChips((c.schedule || {})[k])}</span></div>`).join('')}
+          </div>
+          ${c.notes ? `<p class="details">${linkify(c.notes)}</p>` : ''}
+          ${canEdit(c) ? `<button class="link-btn inline danger" data-action="del-class" data-id="${esc(c.id)}" style="margin-top:12px">Delete this class</button>` : ''}
+        </article>`).join('') : `
+        <div class="card empty"><p class="big">No classes yet</p><p>Tap + and say something like “Mrs. Smith’s class has PE Monday and Wednesday, art Tuesday, music Thursday and library Friday.”</p></div>`}`;
+  }
+
+  function specialsSheet(p = {}, editId = null) {
+    // Match a spoken class to one we already have, so it updates instead of duplicating.
+    const existing = editId ? state.classrooms.find((c) => c.id === editId)
+      : (p.name ? state.classrooms.find((c) => c.name.toLowerCase() === String(p.name).toLowerCase()) : null);
+    const base = existing ? { ...(existing.schedule || {}) } : {};
+    const sched = { ...base, ...(p.schedule || {}) };
+    const name = p.name || (existing && existing.name) || '';
+    const id = existing ? existing.id : null;
+    const dayRow = ([k, label]) => {
+      const picked = sched[k] || [];
+      const extra = picked.filter((x) => !COMMON_SPECIALS.includes(x));
+      return `
+        <div class="sp-edit-day">
+          <p class="sp-edit-label">${label}</p>
+          <div class="seg">${COMMON_SPECIALS.map((sp) => `<label><input type="checkbox" name="d_${k}" value="${sp}" ${picked.includes(sp) ? 'checked' : ''}><span>${sp}</span></label>`).join('')}</div>
+          <input class="input sp-other" name="o_${k}" maxlength="80" value="${esc(extra.join(', '))}" placeholder="Other (optional)">
+        </div>`;
+    };
+    openSheet(`
+      <h2>${id ? 'Update specials' : 'Class specials'}</h2>
+      ${filledNote(p)}
+      ${p._filled && existing ? `<p class="hint" style="margin:-8px 0 14px">Updating ${esc(existing.name)}. Days you didn’t mention stay the same.</p>` : ''}
+      <form id="sheetForm">
+        <label class="field ${p._filled && !name ? 'needs' : ''}"><span>Class</span>
+          <input class="input" name="name" required maxlength="60" value="${esc(name)}" placeholder="e.g. Mrs. Smith" list="classList">
+          <datalist id="classList">${state.classrooms.map((c) => `<option value="${esc(c.name)}">`).join('')}</datalist>
+        </label>
+        ${WEEK.map(dayRow).join('')}
+        <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="500" placeholder="e.g. Library books due back Wednesday">${esc((p.notes ?? (existing && existing.notes)) || '')}</textarea></label>
+        <div class="sheet-actions">
+          <button class="btn btn-primary" type="submit">Save specials</button>
+          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+        </div>
+      </form>`, async (fd) => {
+      const schedule = {};
+      for (const [k] of WEEK) {
+        const list = [...fd.getAll(`d_${k}`), ...String(fd.get(`o_${k}`) || '').split(',').map((x) => x.trim()).filter(Boolean)];
+        if (list.length) schedule[k] = [...new Set(list)];
+      }
+      const nm = fd.get('name').trim();
+      const target = id || (state.classrooms.find((c) => c.name.toLowerCase() === nm.toLowerCase()) || {}).id || null;
+      await api.saveClassroom({ name: nm, schedule, notes: fd.get('notes').trim() || null }, target);
+      state.tab = 'specials';
+      toast('Specials saved');
+    });
+  }
+
   /* ---------------- quick add: talk, type or snap ---------------- */
+  // One mic button for every phone:
+  //  - Android/Chrome: the phone's own live speech-to-text (free, instant).
+  //  - iPhone (and anything without live speech): record a short clip and
+  //    turn it into text through our Supabase "transcribe" function.
+  // If one way fails, the button quietly switches to the other.
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  let preferRecorder = null; // decided on first tap
   let recognizer = null;
+  let recorder = null;
+  let recTimer = null;
 
   function quickAddSheet() {
-    const canTalk = !!SpeechRec;
+    const canTalk = !!SpeechRec || canRecord;
     openSheet(`
       <h2>What are we adding?</h2>
-      <p class="qa-sub">Say it like you'd text it. The app sorts out if it's spelling or an event.</p>
+      <p class="qa-sub">Say it like you'd text it. The app sorts out if it's spelling, specials or an event.</p>
       ${canTalk ? `
         <div class="qa-mic">
           <button type="button" class="mic" data-action="mic" aria-label="Tap to talk">${ICON.mic}</button>
           <p id="micStatus">Tap to talk</p>
         </div>` : ''}
-      <textarea id="qaText" class="input qa-text" placeholder="${canTalk ? 'Or type it here…' : 'Tap the 🎤 on your keyboard and talk, or type it…'}"></textarea>
+      <textarea id="qaText" class="input qa-text" placeholder="${canTalk ? 'Or type it here…' : 'Type it here, or use the 🎤 on your keyboard…'}"></textarea>
       <button type="button" class="btn btn-primary" data-action="qa-go" style="margin-top:12px">Fill it in</button>
       <div class="qa-or"><span>or</span></div>
       <label class="btn btn-yellow qa-photo">${ICON.camera} Snap the paper
@@ -594,53 +758,119 @@
         <p class="words-label">Try saying</p>
         <p>“Spelling test Thursday the 12th. Words are rain, play, gate, train. Challenge words neighbor and celebrate.”</p>
         <p>“PTO meeting Friday at 6:30 in the library.”</p>
-        <p>“Field trip to the Children’s Museum November 20th. Drop off at the east doors by 8:45.”</p>
+        <p>“Mrs. Smith’s class has PE Monday and Wednesday, art Tuesday, music Thursday and library Friday.”</p>
       </div>
       <div class="qa-manual">Rather fill it in yourself?
         <button type="button" class="link-btn inline" data-action="manual-event">Event</button> ·
-        <button type="button" class="link-btn inline" data-action="manual-spelling">Spelling</button>
+        <button type="button" class="link-btn inline" data-action="manual-spelling">Spelling</button> ·
+        <button type="button" class="link-btn inline" data-action="manual-specials">Specials</button>
       </div>`);
     const photo = $('#qaPhoto');
     photo.addEventListener('change', () => { if (photo.files && photo.files[0]) readPhoto(photo.files[0]); });
   }
 
+  function micUi(mode, text) {
+    const btn = $('.mic'); const status = $('#micStatus');
+    if (btn) { btn.classList.toggle('on', mode === 'listening'); btn.classList.toggle('busy', mode === 'working'); btn.disabled = mode === 'working'; }
+    if (status) status.textContent = text;
+  }
+
+  function micDone() {
+    const box = $('#qaText');
+    micUi('idle', box && box.value.trim() ? 'Got it. Tap “Fill it in”, or tap the mic to add more.' : 'Tap to talk');
+  }
+
   function toggleMic() {
-    const btn = $('.mic'); const status = $('#micStatus'); const box = $('#qaText');
     if (recognizer) { recognizer.stop(); return; }
+    if (recorder) { recorder.stop(); return; }
+    if (preferRecorder === null) preferRecorder = isIOS() || !SpeechRec;
+    if (preferRecorder && canRecord) startRecorder();
+    else if (SpeechRec) startLiveSpeech();
+    else micUi('idle', 'Voice isn’t available on this phone. Type it instead.');
+  }
+
+  function startLiveSpeech() {
+    const box = $('#qaText');
+    const before = box.value ? box.value.trim() + ' ' : '';
+    let heard = false;
     try {
       recognizer = new SpeechRec();
       recognizer.lang = 'en-US';
       recognizer.continuous = true;
       recognizer.interimResults = true;
-      const before = box.value ? box.value.trim() + ' ' : '';
       recognizer.onresult = (e) => {
+        heard = true;
         let txt = '';
         for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
         box.value = before + txt.trim();
       };
       recognizer.onerror = (e) => {
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') toast('Microphone is blocked. Use the 🎤 on your keyboard instead.');
+        // Live speech blocked or unavailable: switch to recording, right away.
+        if (!heard && canRecord && ['not-allowed', 'service-not-allowed', 'network', 'audio-capture', 'language-not-supported'].includes(e.error)) {
+          preferRecorder = true;
+          recognizer = null;
+          startRecorder();
+        }
       };
-      recognizer.onend = () => {
-        recognizer = null;
-        if (btn) btn.classList.remove('on');
-        if (status) status.textContent = box.value.trim() ? 'Got it. Tap “Fill it in”, or tap to add more.' : 'Tap to talk';
-      };
+      recognizer.onend = () => { if (recognizer) { recognizer = null; micDone(); } };
       recognizer.start();
-      btn.classList.add('on');
-      status.textContent = 'Listening… tap again when you’re done';
+      micUi('listening', 'Listening… tap again when you’re done');
     } catch {
       recognizer = null;
-      toast('Talking isn’t available here. Use the 🎤 on your keyboard.');
-      box.focus();
+      if (canRecord) { preferRecorder = true; startRecorder(); }
+      else micUi('idle', 'Voice isn’t available on this phone. Type it instead.');
     }
   }
 
-  function stopMic() { if (recognizer) { try { recognizer.abort(); } catch {} recognizer = null; } }
+  async function startRecorder() {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      micUi('idle', 'Allow the microphone for this app, then tap the mic again.');
+      return;
+    }
+    const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find((t) => window.MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
+    const chunks = [];
+    try { recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined); } catch { recorder = new MediaRecorder(stream); }
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = async () => {
+      clearInterval(recTimer);
+      stream.getTracks().forEach((t) => t.stop());
+      const mime = recorder.mimeType || type || 'audio/mp4';
+      recorder = null;
+      const blob = new Blob(chunks, { type: mime });
+      if (blob.size < 1500) { micDone(); return; }
+      micUi('working', 'Writing it down…');
+      try {
+        const text = await api.transcribe(blob);
+        const box = $('#qaText');
+        if (box && text) box.value = (box.value ? box.value.trim() + ' ' : '') + text;
+        micDone();
+      } catch (ex) {
+        micUi('idle', ex.message || 'Couldn’t catch that. Tap the mic and try again.');
+      }
+    };
+    recorder.start();
+    const started = Date.now();
+    const tick = () => {
+      const sec = Math.floor((Date.now() - started) / 1000);
+      micUi('listening', `Listening… 0:${String(sec).padStart(2, '0')} · tap when you’re done`);
+      if (sec >= 59 && recorder) recorder.stop();
+    };
+    tick();
+    recTimer = setInterval(tick, 500);
+  }
+
+  function stopMic() {
+    if (recognizer) { const r = recognizer; recognizer = null; try { r.abort(); } catch {} }
+    if (recorder) { const r = recorder; r.onstop = null; recorder = null; clearInterval(recTimer); try { r.stop(); r.stream.getTracks().forEach((t) => t.stop()); } catch {} }
+  }
 
   function openFilled(r, photoFile) {
     stopMic();
     if (r.type === 'spelling') addSpellingSheet({ ...r, _filled: true }, photoFile || null);
+    else if (r.type === 'specials') specialsSheet({ ...r, _filled: true });
     else addEventSheet({ ...r, _filled: true });
   }
 
@@ -808,6 +1038,12 @@
       else if (a === 'qa-go') quickGo();
       else if (a === 'manual-event') { stopMic(); addEventSheet(); }
       else if (a === 'manual-spelling') { stopMic(); addSpellingSheet(); }
+      else if (a === 'manual-specials') { stopMic(); specialsSheet(); }
+      else if (a === 'edit-class') specialsSheet({}, el.dataset.id);
+      else if (a === 'del-class') {
+        if (!confirm('Delete this class and its specials for everyone?')) return;
+        await api.deleteClassroom(el.dataset.id); toast('Class deleted'); await refresh();
+      }
       else if (a === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; closeSheet(); }
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
       else if (a === 'signout') { closeSheet(); await api.signOut(); state.me = null; state.signin = { step: 'email', email: '' }; renderSignIn(); }
@@ -828,6 +1064,10 @@
     } catch (ex) {
       toast(ex.message || 'Something went wrong.');
     }
+  });
+
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'myClass') { setMyClass(e.target.value); renderView(); }
   });
 
   // Refresh when someone comes back to the app.

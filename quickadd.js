@@ -204,6 +204,75 @@
     return out;
   }
 
+  /* ---------- classroom specials ---------- */
+  const SPECIAL_NAMES = [
+    ['PE', /^(?:p\.?\s?e\.?|phys(?:ical)?\.?\s?ed(?:ucation)?|gym)$/i],
+    ['Art', /^art$/i],
+    ['Music', /^music$/i],
+    ['Library', /^(?:library|media(?: center)?)$/i],
+    ['STEM', /^(?:stem|steam|science lab)$/i],
+    ['Tech', /^(?:computers?|tech(?:nology)?|computer lab)$/i],
+    ['Guidance', /^(?:guidance|counseling|counselor)$/i],
+    ['Spanish', /^spanish$/i],
+    ['Band', /^band$/i],
+    ['Drama', /^drama$/i],
+    ['Health', /^health$/i],
+    ['Dance', /^dance$/i],
+  ];
+  const SPECIAL_TOKEN = '(p\\.?\\s?e\\.?(?=[\\s,.;]|$)|phys(?:ical)?\\.?\\s?ed(?:ucation)?|gym|art|music|library|media(?: center)?|stem|steam|science lab|computers?|computer lab|tech(?:nology)?|guidance|counseling|counselor|spanish|band|drama|health|dance)';
+  const WEEKDAY_TOKEN = '(mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri)(?:day)?s?';
+  const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
+  const canonSpecial = (w) => { const x = w.replace(/\s+/g, ' ').trim(); const hit = SPECIAL_NAMES.find(([, re]) => re.test(x)); return hit ? hit[0] : x; };
+  const dayKey = (w) => DAY_KEYS[['mon', 'tue', 'wed', 'thu', 'fri'].indexOf(w.slice(0, 3).toLowerCase())];
+
+  function looksLikeSpecials(t) {
+    const hasSpecial = new RegExp('\\b' + SPECIAL_TOKEN + '\\b', 'i').test(t);
+    const hasDay = new RegExp('\\b' + WEEKDAY_TOKEN + '\\b', 'i').test(t);
+    if (/\bspecials?\b/i.test(t) && (hasSpecial || hasDay)) return true;
+    const hasClass = /\b(?:mrs?|ms|miss|mx|dr)\.?\s+[a-z]/i.test(t) || /\b(?:room|class(?:room)?)\s+\d/i.test(t) || /'s class\b/i.test(t);
+    return hasClass && hasSpecial && hasDay;
+  }
+
+  function findSpecials(raw) {
+    const t = normalize(raw);
+    const out = { type: 'specials', name: '', schedule: {} };
+    let m;
+    if ((m = /\b(mrs|mr|ms|miss|mx|dr)\.?\s+([a-z][a-z'\-]+?)(?:'s)?\b/i.exec(t))) {
+      const title = m[1].toLowerCase() === 'miss' ? 'Miss' : m[1][0].toUpperCase() + m[1].slice(1).toLowerCase() + '.';
+      out.name = `${title} ${m[2][0].toUpperCase()}${m[2].slice(1).toLowerCase()}`;
+    } else if ((m = /\b(?:room|class(?:room)?)\s+(\d+[a-z]?)\b/i.exec(t))) {
+      out.name = `Room ${m[1].toUpperCase()}`;
+    } else if ((m = /\b([a-z]+)'s class\b/i.exec(t))) {
+      out.name = m[1][0].toUpperCase() + m[1].slice(1).toLowerCase();
+    }
+    // Find specials and weekdays in the order they were said, then pair the
+    // runs up: "PE on Monday and Wednesday" or "Monday is PE and art".
+    const re = new RegExp('\\b(?:' + SPECIAL_TOKEN + '|' + WEEKDAY_TOKEN + ')\\b', 'gi');
+    const runs = [];
+    while ((m = re.exec(t))) {
+      const kind = m[1] ? 'special' : 'day';
+      const val = m[1] ? canonSpecial(m[1]) : dayKey(m[2]);
+      if (kind === 'special' && t.slice(Math.max(0, m.index - 4), m.index).match(/\bno\s$/i)) continue;
+      const last = runs[runs.length - 1];
+      if (last && last.kind === kind) { if (!last.items.includes(val)) last.items.push(val); }
+      else runs.push({ kind, items: [val] });
+    }
+    if (!runs.length) return out;
+    const first = runs[0].kind;
+    for (let i = 0; i < runs.length; i++) {
+      if (runs[i].kind !== first) continue;
+      const partner = runs[i + 1];
+      if (!partner) break;
+      const specials = first === 'special' ? runs[i].items : partner.items;
+      const days = first === 'day' ? runs[i].items : partner.items;
+      for (const d of days) {
+        out.schedule[d] = out.schedule[d] || [];
+        for (const sp of specials) if (!out.schedule[d].includes(sp)) out.schedule[d].push(sp);
+      }
+    }
+    return out;
+  }
+
   /* ---------- events ---------- */
   const PLACES = /\b(?:the\s+)?(gym|library|cafeteria|front office|office|playground|auditorium|music room|art room|front doors?|east doors?|west doors?|north doors?|south doors?|main entrance|parking lot|pickup line|room \d+)\b/i;
 
@@ -274,8 +343,11 @@
   function parse(raw, opts = {}) {
     const now = opts.now || new Date();
     const t = normalize(raw);
-    const kind = opts.force || classify(t, !!opts.fromPhoto);
-    return kind === 'spelling' ? findSpelling(raw, now, !!opts.fromPhoto) : findEvent(raw, now);
+    let kind = opts.force || classify(t, !!opts.fromPhoto);
+    if (!opts.force && kind === 'event' && looksLikeSpecials(t)) kind = 'specials';
+    if (kind === 'spelling') return findSpelling(raw, now, !!opts.fromPhoto);
+    if (kind === 'specials') return findSpecials(raw);
+    return findEvent(raw, now);
   }
 
   const api = { parse, findDate: (t, now) => findDate(normalize(t), now || new Date()), findTime: (t) => findTime(normalize(t)), classify: (t, p) => classify(normalize(t), p) };

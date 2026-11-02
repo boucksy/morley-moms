@@ -2,14 +2,14 @@
 
 A private, invite-only app for the Morley Moms. It installs on iPhone and Android from a link (no app stores) and only approved members can see anything.
 
-**Includes:** email-code sign-in; **Quick Add** (talk, type or snap a photo and the app fills in the form); events (PTO, school, volunteer, moms' outings, kids) with drop-off/pickup details and "add to calendar"; spelling lists with the test day, words, challenge words and a photo; and a members list you control.
+**Includes:** email-code sign-in; **Quick Add** (talk, type or snap a photo and the app fills in the form); events (PTO, school, volunteer, moms' outings, kids) with drop-off/pickup details and "add to calendar"; spelling lists with the test day, words, challenge words and a photo; a Specials schedule for each classroom (with today/tomorrow for your kid's class); and a members list you control.
 
 ### How Quick Add works
 1. Tap **+**.
 2. Tap the microphone and say it, type it, or tap **Snap the paper**.
 3. The app decides whether it's a spelling list or an event, fills in the form (test day, words, challenge words, date, time, place, drop-off/pickup), and the mom checks it and taps **Post**.
 
-Everything runs on the phone, for free. The photo reader (Tesseract) downloads once, a few MB, the first time someone snaps a photo. It reads printed sheets well; handwriting is hit-or-miss, so the photo is always attached too. If the mic button isn't available on a phone, the keyboard's 🎤 works the same way.
+Everything runs on the phone, for free. The photo reader (Tesseract) downloads once, a few MB, the first time someone snaps a photo. It reads printed sheets well; handwriting is hit-or-miss, so the photo is always attached too. The mic button works on every phone: Android uses the phone's own live speech-to-text; iPhones record a short clip and the app turns it into text through a small Supabase function (setup step 8). If one method is blocked, the button quietly switches to the other.
 
 **Cost:** about $12/year for a domain. Everything else runs on free tiers.
 
@@ -101,6 +101,13 @@ Then go to the **Actions** tab → **Keep Supabase awake** → **Run workflow** 
 
 Note: backups include all the text data. Photos stay in Supabase Storage and are not copied.
 
+### 8. Turn on voice for iPhones (free, about 10 minutes)
+iPhones block live speech-to-text inside home-screen apps, so the app records a short clip and sends it to a speech-to-text service through a Supabase function. Only signed-in members can use it, and the service key stays hidden in Supabase.
+1. Create a free account at console.groq.com (no credit card) and make an **API key**.
+2. In Supabase: **Edge Functions → Deploy a new function → Via editor**, name it `transcribe`, paste in `supabase/functions/transcribe/index.ts`, and deploy.
+3. **Edge Functions → Secrets**: add `TRANSCRIBE_API_KEY` = your Groq key.
+That's it. (To use OpenAI instead, also set `TRANSCRIBE_URL` to `https://api.openai.com/v1/audio/transcriptions` and `TRANSCRIBE_MODEL` to `gpt-4o-mini-transcribe`.)
+
 ---
 
 ## Adding moms
@@ -134,7 +141,8 @@ Note: backups include all the text data. Photos stay in Supabase Storage and are
 
 ## Files
 - `index.html`, `styles.css`, `app.js`: the app
-- `quickadd.js`: turns what moms say or snap into a filled-in form
+- `quickadd.js`: turns what moms say or snap into a filled-in form (spelling, specials or event)
+- `supabase/functions/transcribe/`: voice-to-text for iPhones
 - `config.js`: your Supabase connection (public-safe values only)
 - `manifest.webmanifest`, `sw.js`, `icons/`: make it installable
 - `supabase/schema.sql`: database tables and security rules
