@@ -520,10 +520,8 @@
         </div>
         <div class="body">
           <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
-          <p class="meta">${ICON.clock}<span>${esc(fmtDay(d))}${label ? ' · ' + esc(label) : ''}</span></p>
-          <div class="card-tools">
-            <button class="btn btn-ghost btn-small" data-action="see-spelling" data-id="${esc(ev.spell_id)}">See the words</button>
-          </div>
+          <p class="meta">${ICON.clock}<span><strong>${esc(label || fmtDay(d))}</strong></span></p>
+          <button class="btn btn-ghost btn-small" style="margin-top:8px" data-action="see-spelling" data-id="${esc(ev.spell_id)}">See the words</button>
         </div>
       </article>`;
   }
