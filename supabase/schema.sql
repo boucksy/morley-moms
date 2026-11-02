@@ -169,8 +169,8 @@ create policy "owner or admin deletes spelling" on public.spelling_lists
   using (public.is_member() and (created_by = auth.uid() or public.is_admin()));
 
 -- ---------- Classrooms & specials ----------
--- One row per classroom. schedule looks like:
---   {"mon":["PE"],"tue":["Art"],"wed":["PE"],"thu":["Music"],"fri":["Library"]}
+-- One row per classroom. schedule maps rotation day number to its special:
+--   {"1":["Art"],"2":["Gym"],"3":["Music"],"4":["Library"]}
 create table if not exists public.classrooms (
   id              uuid primary key default gen_random_uuid(),
   name            text not null check (char_length(name) between 1 and 60),
@@ -221,6 +221,38 @@ drop policy if exists "owner or admin deletes classrooms" on public.classrooms;
 create policy "owner or admin deletes classrooms" on public.classrooms
   for delete to authenticated
   using (public.is_member() and (created_by = auth.uid() or public.is_admin()));
+
+-- ---------- Specials rotation (Day 1–4) ----------
+-- Classroom schedules are keyed by day number: {"1":["Art"],"2":["Gym"],...}
+-- A row here says "this date was Day N". The app counts school days from
+-- the latest one, skipping weekends and "No school" days, so snow days and
+-- breaks shift the rotation automatically. A newer row corrects it from then on.
+create table if not exists public.rotation_anchors (
+  anchor_date     date primary key,
+  day_number      smallint not null check (day_number between 1 and 4),
+  created_by      uuid references auth.users(id) on delete set null,
+  created_by_name text,
+  created_at      timestamptz not null default now()
+);
+drop trigger if exists anchors_author on public.rotation_anchors;
+create trigger anchors_author before insert on public.rotation_anchors
+  for each row execute function public.set_author();
+
+alter table public.rotation_anchors enable row level security;
+revoke all on public.rotation_anchors from anon;
+
+drop policy if exists "members read rotation" on public.rotation_anchors;
+create policy "members read rotation" on public.rotation_anchors
+  for select to authenticated using (public.is_member());
+drop policy if exists "members set rotation" on public.rotation_anchors;
+create policy "members set rotation" on public.rotation_anchors
+  for insert to authenticated with check (public.is_member());
+drop policy if exists "members correct rotation" on public.rotation_anchors;
+create policy "members correct rotation" on public.rotation_anchors
+  for update to authenticated using (public.is_member()) with check (public.is_member());
+drop policy if exists "admins remove rotation" on public.rotation_anchors;
+create policy "admins remove rotation" on public.rotation_anchors
+  for delete to authenticated using (public.is_admin());
 
 -- ---------- Private photo storage ----------
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

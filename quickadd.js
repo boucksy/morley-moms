@@ -215,10 +215,12 @@
     ['Library', /^(?:library|media(?: center)?)$/i],
   ];
   const SPECIAL_TOKEN = '(p\\.?\\s?e\\.?(?=[\\s,.;]|$)|phys(?:ical)?\\.?\\s?ed(?:ucation)?|gym|art|music|library|media(?: center)?)';
-  const WEEKDAY_TOKEN = '(mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri)(?:day)?s?';
+  // Rotation day numbers: "day 1", "day one", "day #2", "day number three"
+  const WEEKDAY_TOKEN = 'day\\s*(?:#\\s*|number\\s*)?(1|2|3|4|one|two|three|four)';
+  const NUM_WORD = { one: 1, two: 2, three: 3, four: 4 };
   const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri'];
   const canonSpecial = (w) => { const x = w.replace(/\s+/g, ' ').trim(); const hit = SPECIAL_NAMES.find(([, re]) => re.test(x)); return hit ? hit[0] : x; };
-  const dayKey = (w) => DAY_KEYS[['mon', 'tue', 'wed', 'thu', 'fri'].indexOf(w.slice(0, 3).toLowerCase())];
+  const dayKey = (w) => String(NUM_WORD[String(w).toLowerCase()] || w);
 
   function looksLikeSpecials(t) {
     const hasSpecial = new RegExp('\\b' + SPECIAL_TOKEN + '\\b', 'i').test(t);
@@ -338,6 +340,12 @@
   function parse(raw, opts = {}) {
     const now = opts.now || new Date();
     const t = normalize(raw);
+    // "Today is day 3" / "tomorrow is day four" sets the specials rotation.
+    const rot = /\b(today|tomorrow)(?:'s| is)\s+(?:a\s+)?day\s*(?:#\s*|number\s*)?(1|2|3|4|one|two|three|four)\b/i.exec(t);
+    if (!opts.force && rot) {
+      const d = dayStart(now); if (/tomorrow/i.test(rot[1])) d.setDate(d.getDate() + 1);
+      return { type: 'rotation', date: iso(d), day: NUM_WORD[rot[2].toLowerCase()] || +rot[2] };
+    }
     let kind = opts.force || classify(t, !!opts.fromPhoto);
     if (!opts.force && kind === 'event' && looksLikeSpecials(t)) kind = 'specials';
     if (kind === 'spelling') return findSpelling(raw, now, !!opts.fromPhoto);

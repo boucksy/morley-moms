@@ -361,3 +361,15 @@ textarea.input { min-height: 90px; resize: vertical; }
 .event.cat-rides { border-left-color: var(--blue-dark); }
 .event h3 { margin-top: 0; }
 .event .chip-now + h3 { margin-top: 6px; }
+
+/* ---------- v6: Day 1–4 rotation ---------- */
+.sp-ask { background: rgba(255,255,255,.12); border-radius: 16px; padding: 14px; }
+.sp-ask-q { font-family: var(--display); font-weight: 600; font-size: 21px; margin-bottom: 10px; }
+.sp-ask-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sp-num { border: 0; border-radius: 14px; min-height: 52px; font-weight: 800; font-size: 16px; background: var(--yellow); color: var(--ink); }
+.sp-ask-btns.light .sp-num { background: var(--blue-soft); color: var(--blue); }
+.sp-ask-btns.light .sp-num.on { background: var(--blue); color: var(--white); }
+.sp-ask-hint { font-size: 13px; opacity: .85; margin-top: 10px; }
+.sp-fix { display: block; margin: 12px auto 0; background: none; border: 0; color: rgba(255,255,255,.85); font-weight: 700; font-size: 13px; text-decoration: underline; }
+.sp-d { width: 52px; }
+.sp-today { margin-left: auto; font-size: 12px; font-weight: 800; color: var(--ink); background: var(--yellow); border-radius: 999px; padding: 2px 8px; }
