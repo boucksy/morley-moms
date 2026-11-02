@@ -349,6 +349,8 @@
   })();
 
   async function afterSignIn() {
+    // Ask the phone to keep our saved sign-in even when storage gets tight.
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch {}
     state.me = await api.me();
     if (!state.me) { renderNotMember(); return; }
     renderShell();
