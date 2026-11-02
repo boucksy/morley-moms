@@ -46,6 +46,7 @@
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
     star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8 6.6 19.7l1.1-6.1L3.2 9.4l6.1-.8z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+    link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.2 1.2"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
     pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
@@ -592,8 +593,8 @@
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
-          ${cleanLink(ev.link) ? `<a class="btn btn-primary btn-small ev-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer">${esc(ev.link_label || 'Open link')} <small>${esc(linkHost(cleanLink(ev.link)))}</small></a>` : ''}
           <div class="card-tools">
+            ${cleanLink(ev.link) ? `<a class="icon-btn icon-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer" aria-label="${esc((ev.link_label || 'Open link') + ' (' + linkHost(cleanLink(ev.link)) + ')')}" title="${esc((ev.link_label || 'Open link') + ' · ' + linkHost(cleanLink(ev.link)))}">${ICON.link}</a>` : ''}
             <button class="icon-btn" data-action="ics" data-id="${esc(ev.id)}" aria-label="Add to my calendar" title="Add to my calendar">${ICON.calendar.replace('<svg', '<svg width="20" height="20"')}</button>
             <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" ${ev._occ ? `data-occ="${isoDate(localDay(ev.starts_at))}"` : ''} aria-label="Edit" title="Edit">${ICON.edit}</button>
           </div>

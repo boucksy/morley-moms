@@ -436,5 +436,5 @@ input[type="date"].input, input[type="time"].input { min-height: 52px; }
 /* Long details collapse to a few lines with a Show more button. */
 .event .details.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .more-btn { margin-top: 4px; font-size: 14px; }
-.ev-link { margin-top: 10px; text-decoration: none; display: inline-flex; gap: 8px; align-items: baseline; }
-.ev-link small { opacity: .8; font-weight: 500; }
+a.icon-link { background: var(--blue); color: var(--white); text-decoration: none; }
+.event.off a.icon-link { background: var(--blue); }
