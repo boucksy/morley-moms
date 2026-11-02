@@ -295,6 +295,8 @@
   function findEvent(raw, now) {
     const t = normalize(raw);
     const out = { type: 'event', title: '', category: categoryOf(t), date: null, time: '', location: '', pickup_dropoff: '', details: '' };
+    const urlHit = /\b(https?:\/\/[^\s<>"')]+|www\.[^\s<>"')]+)/i.exec(t);
+    if (urlHit) out.link = urlHit[1].replace(/[.,;!?]+$/, '');
     const dt = findDate(t, now);
     const tm = findTime(t);
     if (dt.date) out.date = iso(dt.date);
@@ -323,7 +325,7 @@
       const trip = /\btrip\s+to\s+(?:the\s+)?([A-Za-z][A-Za-z0-9'&]*(?:\s+[A-Za-z0-9'&]+){0,4}?)(?=\s+(?:on|at|this|next|tomorrow|for|by)\b|[,.;!\n]|\s*$)/i.exec(t);
       if (trip) loc = trip[1];
     }
-    if (loc && /^(our|your|their|my|his|her|this|that|these|those|its|a|an)\b/i.test(loc)) loc = '';
+    if (loc && (/^(our|your|their|my|his|her|this|that|these|those|its|a|an)\b/i.test(loc) || /^(www|https?)\b/i.test(loc))) loc = '';
     if (loc) out.location = loc.replace(/(^|\s)\w/g, (c) => c.toUpperCase()).replace(/(?!^)\b(Of|And|The|To|On|At|In|By)\b/g, (w) => w.toLowerCase());
 
     // Anything after the first sentence (other than the pickup line) becomes the details.

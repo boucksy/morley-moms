@@ -432,3 +432,9 @@ input[type="date"].input, input[type="time"].input { min-height: 52px; }
 
 .event.cat-homework { border-left-color: #6C7A99; }
 .event.cat-spelling { border-left-color: var(--blue); background: var(--blue-soft); }
+
+/* Long details collapse to a few lines with a Show more button. */
+.event .details.clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.more-btn { margin-top: 4px; font-size: 14px; }
+.ev-link { margin-top: 10px; text-decoration: none; display: inline-flex; gap: 8px; align-items: baseline; }
+.ev-link small { opacity: .8; font-weight: 500; }

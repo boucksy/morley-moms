@@ -87,6 +87,8 @@ alter table public.events add constraint events_repeat_days_check
 -- v5: one-day changes to a weekly item (a swapped or canceled pickup).
 --   replaces  the weekly item this one stands in for on its date
 --   canceled  true when that day's weekly item just isn't happening
+alter table public.events add column if not exists link text;
+alter table public.events add column if not exists link_label text;
 alter table public.events add column if not exists replaces uuid references public.events(id) on delete cascade;
 alter table public.events add column if not exists canceled boolean not null default false;
 create index if not exists events_replaces_idx on public.events (replaces);

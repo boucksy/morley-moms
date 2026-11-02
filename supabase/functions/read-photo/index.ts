@@ -37,7 +37,9 @@ Reply with ONLY a JSON object, no other text:
     "time": "HH:MM" or null,
     "end_time": "HH:MM" or null,
     "location": string or null,
-    "details": string or null
+    "details": string or null,
+    "link": string or null,
+    "link_label": string or null
   },
   "text": string
 }
@@ -50,6 +52,7 @@ Rules:
 - event.category: pto = PTO meetings and events; school = school activities and announcements; homework = homework or a project the child must complete and turn in (anything with a due date for the child); noschool = days with no school; volunteer = asks for volunteers, donations or supplies; social = moms' outings; kids = kids' clubs or playdates; rides = pickups and drop-offs; null if unsure.
 - Dates: turn weekdays and "next Tuesday" into the real date relative to today. A due date is the event's date. Use null if no date is stated.
 - event.details: only useful extra facts that don't fit the other fields (what to bring, sign-up links, instructions), in at most two short sentences. null if there is nothing extra. Do not repeat the title, date, time or place.
+- event.link: a web address printed on the paper (like a donation or sign-up page), exactly as printed. null if none. Do not guess one. event.link_label: 1 to 3 words for a button that goes there, like "Donate" or "Sign up"; null if no link.
 - text: the clearly printed or spoken text, in reading order.`;
 
 const PHOTO_INTRO = `This is a photo of a paper a parent got from their child's elementary school. It may be sideways or upside down, and may have handwriting, check marks, X's or scribbles from a child on top of it. Ignore all of that. Ignore greetings like "Dear Families".`;
@@ -121,6 +124,11 @@ Deno.serve(async (req) => {
   const hm = (t: unknown) => (typeof t === "string" && /^\d{2}:\d{2}$/.test(t) ? t : null);
   const str = (v: unknown) => (v ? String(v).trim() || null : null);
   const CATS = ["pto", "school", "homework", "noschool", "volunteer", "social", "kids", "rides"];
+  const webLink = (v: unknown) => {
+    let u = str(v); if (!u) return null;
+    if (!/^https?:\/\//i.test(u)) { if (/^[\w-]+(\.[\w-]+)+(\/|$)/.test(u)) u = "https://" + u; else return null; }
+    try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch { return null; }
+  };
   const ev = out.event ?? {};
   return json({
     kind: out.kind === "spelling" ? "spelling" : "event",
@@ -137,6 +145,8 @@ Deno.serve(async (req) => {
       end_time: hm(ev.end_time),
       location: str(ev.location),
       details: str(ev.details),
+      link: webLink(ev.link),
+      link_label: str(ev.link_label),
     },
     text: String(out.text ?? "").trim(),
   });

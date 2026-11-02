@@ -559,6 +559,15 @@
       </article>`;
   }
 
+  // Only ever web links. Adds https:// when someone types just "site.org/donate".
+  function cleanLink(v) {
+    let u = String(v || '').trim();
+    if (!u) return null;
+    if (!/^https?:\/\//i.test(u)) { if (/^[\w-]+(\.[\w-]+)+(\/|$)/.test(u)) u = 'https://' + u; else return null; }
+    try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : null; } catch { return null; }
+  }
+  const linkHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+
   function eventCard(ev) {
     if (ev._spell) return spellTestCard(ev);
     const repeating = isRepeating(ev);
@@ -582,7 +591,8 @@
           ${repeating && next ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')}<span><strong>Next:</strong> ${esc(fmtDay(next))}</span></p>` : ''}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
-          ${ev.details ? `<p class="details">${linkify(ev.details)}</p>` : ''}
+          ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
+          ${cleanLink(ev.link) ? `<a class="btn btn-primary btn-small ev-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer">${esc(ev.link_label || 'Open link')} <small>${esc(linkHost(cleanLink(ev.link)))}</small></a>` : ''}
           <div class="card-tools">
             <button class="icon-btn" data-action="ics" data-id="${esc(ev.id)}" aria-label="Add to my calendar" title="Add to my calendar">${ICON.calendar.replace('<svg', '<svg width="20" height="20"')}</button>
             <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" ${ev._occ ? `data-occ="${isoDate(localDay(ev.starts_at))}"` : ''} aria-label="Edit" title="Edit">${ICON.edit}</button>
@@ -673,7 +683,7 @@
     const s = new Date(ev.starts_at);
     const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     return {
-      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details,
+      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details, link: ev.link || '', link_label: ev.link_label || '',
       date: isoDate(s),
       time: ev.all_day ? '' : hhmm(s),
       end_time: !ev.all_day && ev.ends_at ? hhmm(new Date(ev.ends_at)) : '',
@@ -712,6 +722,10 @@
         </div>
         <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. Morley Library"></label>
         <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
+        <div class="row2">
+          <label class="field"><span>Link <small>(optional)</small></span><input class="input" name="link" type="url" inputmode="url" autocapitalize="off" maxlength="500" value="${esc(p.link || '')}" placeholder="https://…"></label>
+          <label class="field"><span>Button says <small>(optional)</small></span><input class="input" name="link_label" maxlength="30" value="${esc(p.link_label || '')}" placeholder="e.g. Donate"></label>
+        </div>
         <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What to bring, sign-up links, anything else">${esc(p.details || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${editing ? 'Save changes' : 'Post event'}</button>
@@ -741,7 +755,10 @@
         location: fd.get('location').trim() || null,
         pickup_dropoff: fd.get('pickup_dropoff').trim() || null,
         details: fd.get('details').trim() || null,
+        link: cleanLink(fd.get('link')),
+        link_label: cleanLink(fd.get('link')) ? (fd.get('link_label').trim() || null) : null,
       };
+      if (fd.get('link').trim() && !row.link) throw new Error('That link doesn\u2019t look right. It should start with https://');
       if (series) { row.replaces = series.id; row.canceled = !!p.canceled; }
       if (editing) await api.updateEvent(editing.id, row); else await api.addEvent(row);
       state.tab = 'events'; state.filter = 'all';
@@ -1368,6 +1385,7 @@
     if (!e.title && !e.date) return null;
     const out = { type: 'event', title: e.title || '', date: e.date || null, end_date: e.end_date || '', time: e.time || '', end_time: e.end_time || '', location: e.location || '', pickup_dropoff: '', details: e.details || '' };
     if (e.category) out.category = e.category;
+    out.link = e.link || ''; out.link_label = e.link_label || '';
     return out;
   }
 
@@ -1423,6 +1441,38 @@
     return new File([blob], 'list.jpg', { type: 'image/jpeg' });
   };
 
+  // Looks for a QR code in the photo and returns the web address inside it.
+  let qrLoading = null;
+  function loadQr() {
+    if (window.jsQR) return Promise.resolve();
+    if (!qrLoading) {
+      qrLoading = new Promise((res, rej) => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+        sc.onload = res; sc.onerror = () => { qrLoading = null; rej(new Error('load')); };
+        document.head.appendChild(sc);
+      });
+    }
+    return qrLoading;
+  }
+  async function findQrLink(file) {
+    try {
+      await loadQr();
+      const bmp = await createImageBitmap(file);
+      for (const max of [1600, 1000, 2400]) {
+        const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+        const x = c.getContext('2d', { willReadFrequently: true });
+        x.drawImage(bmp, 0, 0, c.width, c.height);
+        const img = x.getImageData(0, 0, c.width, c.height);
+        const hit = window.jsQR(img.data, c.width, c.height, { inversionAttempts: 'attemptBoth' });
+        if (hit && hit.data) { const u = cleanLink(hit.data); if (u) return u; }
+      }
+    } catch {}
+    return null;
+  }
+
   async function readPhoto(file) {
     stopMic();
     const busy = $('#qaBusy'); const bar = busy && busy.querySelector('.bar span'); const label = busy && busy.querySelector('p');
@@ -1437,6 +1487,11 @@
       const v = await api.readPhoto(small);
       const form = aiToForm(v);
       if (form) {
+        if (form.type === 'event') {
+          setPct(0.9, 'Looking for a link…');
+          const qr = await findQrLink(file);
+          if (qr) form.link = qr; else form.link = cleanLink(form.link) || '';
+        }
         if (form.type === 'event' && !form.title && v.text) form.title = window.MMQuick.parse(v.text, { fromPhoto: true, force: 'event' }).title || '';
         openFilled(form, form.type === 'spelling' ? small : null); return;
       }
@@ -1625,6 +1680,9 @@
       else if (a === 'occ-cancel') {
         const ev = state.events.find((e) => String(e.id) === el.dataset.id);
         if (ev) { await cancelOneDay(ev, el.dataset.occ); closeSheet(); toast('Canceled for that day'); await refresh(); }
+      }
+      else if (a === 'toggle-details') {
+        const p = el.previousElementSibling; if (p) { const open = p.classList.toggle('clamp') === false; el.textContent = open ? 'Show less' : 'Show more'; }
       }
       else if (a === 'see-spelling') { state.tab = 'spelling'; renderTabs(); renderView(); }
       else if (a === 'edit-spell') addSpellingSheet({}, null, el.dataset.id);
