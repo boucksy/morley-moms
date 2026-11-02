@@ -1351,7 +1351,7 @@
       try {
         const form = aiToForm(await api.readNote(text));
         if (form) { openFilled(form); return; }
-      } catch { /* fall back to the on-phone reader */ }
+      } catch { toast('The AI reader isn’t answering, so I used the basic one. Check the title.'); }
       micUi('idle', 'Tap to talk');
     }
     openFilled(local);
@@ -1411,7 +1411,7 @@
         openFilled(r, r.type === 'spelling' ? small : null);
         return;
       }
-    } catch { /* fall back to the free on-phone reader below */ }
+    } catch { toast('The AI reader isn’t answering, so I’m using the basic one.'); }
     try {
       await loadTesseract();
       worker = await window.Tesseract.createWorker('eng');
