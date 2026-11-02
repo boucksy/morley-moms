@@ -446,3 +446,7 @@ a.icon-link { background: var(--blue); color: var(--white); text-decoration: non
 html { font-size: 106.25%; -webkit-text-size-adjust: 100%; }
 @supports (-webkit-touch-callout: none) { html { font: -apple-system-body; } }
 html, body, button, a, input, select, textarea, label { touch-action: manipulation; }
+
+.event.turned-in { opacity: .6; }
+.event.turned-in h3 { text-decoration: line-through; }
+.icon-btn.on { background: var(--green, #2e9e5b); color: #fff; }

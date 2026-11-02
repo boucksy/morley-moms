@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 38;
+  const APP_VERSION = 39;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -603,7 +603,7 @@
     const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article class="card event cat-${esc(ev.category)} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
+      <article class="card event cat-${esc(ev.category)} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
         <div class="datebadge" aria-hidden="true">
           <span class="mon">${d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
           <span class="day">${d.getDate()}</span>
@@ -620,7 +620,7 @@
           ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
           <div class="card-tools">
             ${cleanLink(ev.link) ? `<a class="icon-btn icon-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer" aria-label="${esc((ev.link_label || 'Open link') + ' (' + linkHost(cleanLink(ev.link)) + ')')}" title="${esc((ev.link_label || 'Open link') + ' · ' + linkHost(cleanLink(ev.link)))}">${ICON.link}</a>` : ''}
-            <button class="icon-btn" data-action="ics" data-id="${esc(ev.id)}" aria-label="Add to my calendar" title="Add to my calendar">${ICON.calendar.replace('<svg', '<svg width="20" height="20"')}</button>
+            ${ev.category === 'homework' && !ev._spell ? `<button class="icon-btn ${isDone(ev) ? 'on' : ''}" data-action="hw-done" data-id="${esc(ev.id)}" aria-pressed="${isDone(ev)}" aria-label="${isDone(ev) ? 'Turned in. Tap to undo' : 'Mark as turned in'}" title="${isDone(ev) ? 'Turned in' : 'Mark as turned in'}">${ICON.check || '✓'}</button>` : ''}
             <button class="icon-btn" data-action="edit-event" data-id="${esc(ev.id)}" ${ev._occ ? `data-occ="${isoDate(localDay(ev.starts_at))}"` : ''} aria-label="Edit" title="Edit">${ICON.edit}</button>
           </div>
         </div>
@@ -672,11 +672,11 @@
     }));
     const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
     const items = [
-      ...oneTime.filter((e) => lastDayOf(e) >= today),
+      ...oneTime.filter((e) => lastDayOf(e) >= today && (!isDone(e) || state.filter === 'homework')),
       ...state.events.filter((e) => isRepeating(e) && match(e) && forMe(e)).flatMap((e) => occurrencesOf(e, today, off)),
     ];
     // Something already under way (like a break) is listed under this week.
-    const showDay = (e) => new Date(Math.max(localDay(e.starts_at), today));
+    const showDay = (e) => (e.category === 'homework' ? today : new Date(Math.max(localDay(e.starts_at), today)));
     items.sort((a, b) => showDay(a) - showDay(b) || new Date(a.starts_at) - new Date(b.starts_at) || (a.all_day ? -1 : 1));
     const weeks = [];
     for (const e of items) {
@@ -995,6 +995,14 @@
   const WEEK = [['mon', 'Monday'], ['tue', 'Tuesday'], ['wed', 'Wednesday'], ['thu', 'Thursday'], ['fri', 'Friday']];
   const ROT = ['1', '2', '3', '4'];
   const COMMON_SPECIALS = ['Library', 'Music', 'Art', 'Gym'];
+  const DONE_KEY = 'mm.hwDone';
+  const doneSet = () => { try { return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || '[]')); } catch { return new Set(); } };
+  const isDone = (ev) => ev.category === 'homework' && doneSet().has(String(ev.id));
+  function toggleDone(id) {
+    const d = doneSet(); const k = String(id);
+    if (d.has(k)) d.delete(k); else d.add(k);
+    try { localStorage.setItem(DONE_KEY, JSON.stringify([...d])); } catch {}
+  }
   const PINCH_KEY = 'mm.pinchZoom';
   const pinchOn = () => { try { return localStorage.getItem(PINCH_KEY) === '1'; } catch { return false; } };
   setTimeout(() => applyZoom(), 0);
@@ -1721,6 +1729,7 @@
       else if (a === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; closeSheet(); }
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
       else if (a === 'signout') { closeSheet(); await api.signOut(); state.me = null; state.signin = { step: 'email', email: '' }; renderSignIn(); }
+      else if (a === 'hw-done') { toggleDone(el.dataset.id); renderView(); }
       else if (a === 'ics') { const ev = state.events.find((x) => String(x.id) === el.dataset.id); if (ev) downloadIcs(ev); }
       else if (a === 'edit-event') { if (el.dataset.occ) occurrenceSheet(el.dataset.id, el.dataset.occ); else addEventSheet({}, el.dataset.id); }
       else if (a === 'occ-change') { const ev = state.events.find((e) => String(e.id) === el.dataset.id); if (ev) addEventSheet(oneDayFrom(ev, el.dataset.occ)); }
