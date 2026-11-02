@@ -33,7 +33,7 @@ jobs:
       # GitHub switches off scheduled jobs in public repos after 60 days
       # with no commits. If the repo has been quiet for 45+ days, make one
       # tiny commit so this job keeps itself running.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Keep this schedule switched on
         run: |
           last=$(git log -1 --format=%ct)
