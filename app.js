@@ -1258,19 +1258,54 @@
     return tesseractLoading;
   }
 
+  // Turn a photo by 0/90/180/270 degrees and return it as a canvas.
+  async function rotatedCanvas(file, deg, max) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const c = document.createElement('canvas');
+    const turned = deg === 90 || deg === 270;
+    c.width = turned ? h : w; c.height = turned ? w : h;
+    const x = c.getContext('2d');
+    x.translate(c.width / 2, c.height / 2);
+    x.rotate((deg * Math.PI) / 180);
+    x.drawImage(bmp, -w / 2, -h / 2, w, h);
+    return c;
+  }
+  const canvasToFile = async (c) => {
+    const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.85));
+    return new File([blob], 'list.jpg', { type: 'image/jpeg' });
+  };
+
   async function readPhoto(file) {
     stopMic();
     const busy = $('#qaBusy'); const bar = busy && busy.querySelector('.bar span'); const label = busy && busy.querySelector('p');
     if (busy) busy.hidden = false;
     const setPct = (p, msg) => { if (bar) bar.style.width = Math.round(p * 100) + '%'; if (label && msg) label.textContent = msg; };
     setPct(0.05, 'Getting the reader ready…');
-    const small = await shrinkImage(file, 2000);
+    let small = await shrinkImage(file, 2000);
+    let worker = null;
     try {
       await loadTesseract();
-      setPct(0.15, 'Reading the paper…');
-      const { data } = await window.Tesseract.recognize(small, 'eng', {
-        logger: (m) => { if (m.status === 'recognizing text') setPct(0.15 + m.progress * 0.85, `Reading the paper… ${Math.round(m.progress * 100)}%`); },
-      });
+      worker = await window.Tesseract.createWorker('eng');
+      await worker.setParameters({ tessedit_pageseg_mode: '11' }); // sparse text: works on tables and forms
+
+      // Papers are often photographed sideways. Try all four turns on a small
+      // copy and keep the one that reads as the most real words.
+      setPct(0.12, 'Straightening the photo…');
+      let best = 0, bestScore = -1;
+      for (const deg of [0, 90, 270, 180]) {
+        const c = await rotatedCanvas(small, deg, 900);
+        const { data } = await worker.recognize(c);
+        const score = (data.words || []).filter((w) => w.confidence > 70 && /^[A-Za-z]{3,}$/.test(w.text)).length;
+        if (score > bestScore) { bestScore = score; best = deg; }
+        setPct(0.12 + 0.18 * ([0, 90, 270, 180].indexOf(deg) + 1) / 4);
+        if (deg === 0 && score >= 25) break; // already upright
+      }
+      if (best) small = await canvasToFile(await rotatedCanvas(small, best, 2000));
+
+      setPct(0.35, 'Reading the paper…');
+      const { data } = await worker.recognize(small);
       const text = (data && data.text) || '';
       if (text.replace(/\W/g, '').length < 6) throw new Error('empty');
       const r = window.MMQuick.parse(text, { fromPhoto: true });
@@ -1278,6 +1313,8 @@
     } catch {
       toast('Couldn’t read that one. The photo is attached; add the words if you can.');
       openFilled({ type: 'spelling' }, small);
+    } finally {
+      if (worker) { try { await worker.terminate(); } catch {} }
     }
   }
 
