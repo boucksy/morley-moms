@@ -137,6 +137,8 @@
   }
 
   function categoryOf(t) {
+    if (/\bno school\b|\bnot in session\b|\bschool(?:'s| is)? (?:closed|out)\b|\b(?:winter|spring|thanksgiving|fall) break\b|\bteacher (?:workday|in-?service)\b/i.test(t)) return 'noschool';
+    if (/\b(?:takes?|taking|drives?|driving|picks?|picking)\s+(?:\w+\s+){0,2}(?:home|up from school)\b|\bcarpool\b|\brides?\b/i.test(t)) return 'rides';
     if (/\bp\.?\s?t\.?\s?o\.?\b|\bp\.?\s?t\.?\s?a\.?\b|\bboard meeting\b/i.test(t)) return 'pto';
     if (/\bvolunteer|sign[\s-]?ups?\b|\bhelp(?:ers)? needed\b|\bneed(?:s|ing)? (?:help|people|volunteers|someone|donations?)\b|\bdonat|\bbring (?:in )?(?:snacks?|supplies)|\bdrive\b/i.test(t)) return 'volunteer';
     if (/\bmoms?'? (?:night|out|coffee|walk|brunch|lunch|dinner|drinks?)\b|\bgirls'? night\b|\bcoffee\b|\bbrunch\b|\bhappy hour\b|\bwine\b|\bbook club\b/i.test(t)) return 'social';

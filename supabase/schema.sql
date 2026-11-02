@@ -40,11 +40,15 @@ $$;
 create or replace function public.set_author()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  new.created_by := auth.uid();
-  select coalesce(display_name, split_part(email, '@', 1))
-    into new.created_by_name
-    from public.members
-   where email = lower(coalesce(auth.jwt() ->> 'email', ''));
+  -- Posts from the app are stamped with the signed-in member.
+  -- Rows loaded by the admin in the SQL editor keep the name they were given.
+  if auth.uid() is not null then
+    new.created_by := auth.uid();
+    select coalesce(display_name, split_part(email, '@', 1))
+      into new.created_by_name
+      from public.members
+     where email = lower(coalesce(auth.jwt() ->> 'email', ''));
+  end if;
   return new;
 end;
 $$;
@@ -65,6 +69,20 @@ create table if not exists public.events (
   created_at      timestamptz not null default now()
 );
 create index if not exists events_starts_at_idx on public.events (starts_at);
+
+-- v4: end times, multi-day ranges, weekly repeats, and two more types
+--   ends_at       end time (or, for all-day items, the last day)
+--   repeat_days   e.g. {tue} or {wed,thu} for "every Wednesday and Thursday"
+--   repeat_until  last date a weekly item happens (skips no-school days)
+alter table public.events add column if not exists ends_at timestamptz;
+alter table public.events add column if not exists repeat_days text[];
+alter table public.events add column if not exists repeat_until date;
+alter table public.events drop constraint if exists events_category_check;
+alter table public.events add constraint events_category_check
+  check (category in ('pto','school','noschool','volunteer','social','kids','rides'));
+alter table public.events drop constraint if exists events_repeat_days_check;
+alter table public.events add constraint events_repeat_days_check
+  check (repeat_days is null or repeat_days <@ array['mon','tue','wed','thu','fri','sat','sun']);
 
 -- ---------- Spelling lists ----------
 create table if not exists public.spelling_lists (

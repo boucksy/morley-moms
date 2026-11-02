@@ -51,6 +51,12 @@ With `config.js` left blank, the app runs with sample data. Open `index.html` (o
    values ('your-email@example.com', 'Miranda', true);
    ```
 
+### 2b. Load the school calendar
+1. In **SQL Editor**, paste all of `supabase/seed-calendar.sql` and click **Run**. This adds the 2026–27 PTO meetings, family nights, garden cleanups, Wizarding Club, breaks and no-school days.
+2. If you have the private pickups file (`seed-rides.private.sql`, sent separately), run it the same way. **Don't upload that file to GitHub.** It has kids' names, which is why it's kept out of the repo.
+
+Both files are safe to run again; anything already loaded is skipped.
+
 ### 3. Turn on email-code sign-in
 1. **Authentication → Sign In / Providers → Email**: make sure Email is enabled.
 2. **Authentication → Emails → Templates → Magic Link**: replace the body with something like:
@@ -146,4 +152,6 @@ That's it. (To use OpenAI instead, also set `TRANSCRIBE_URL` to `https://api.ope
 - `config.js`: your Supabase connection (public-safe values only)
 - `manifest.webmanifest`, `sw.js`, `icons/`: make it installable
 - `supabase/schema.sql`: database tables and security rules
+- `supabase/seed-calendar.sql`: the 2026–27 school calendar
+- `demo-calendar.js`: the same calendar, shown in demo mode
 - `.github/workflows/`: keep-alive and backup automations

@@ -66,13 +66,20 @@
         { email: 'priya@example.com', display_name: 'Priya', is_admin: false },
         { email: 'tanya@example.com', display_name: 'Tanya', is_admin: false },
       ],
+      // Demo mode shows the real 2026–27 Morley calendar (demo-calendar.js),
+      // plus a made-up weekly ride so you can see how rides look.
       events: [
-        { id: 'e1', title: 'PTO monthly meeting', category: 'pto', starts_at: at(2, 18, 30), all_day: false, location: 'School library', pickup_dropoff: '', details: 'Childcare in the gym. Agenda: winter carnival + teacher appreciation.', created_by: 'u-jess', created_by_name: 'Jess' },
-        { id: 'e2', title: 'Book fair volunteers', category: 'volunteer', starts_at: at(5, 8, 0), all_day: false, location: 'Front hallway', pickup_dropoff: '', details: 'Need 2 people per shift, 8–10 and 2–4. Sign-up sheet: https://example.com/signup', created_by: 'u-priya', created_by_name: 'Priya' },
-        { id: 'e3', title: 'Field trip: Children\u2019s Museum', category: 'school', starts_at: at(9, 9, 15), all_day: false, location: 'Children\u2019s Museum', pickup_dropoff: 'Drop off at the east doors by 8:45. Pickup back at school at 2:30.', details: 'Sack lunch, no glass. Chaperones meet in room 12.', created_by: 'u-jess', created_by_name: 'Jess' },
-        { id: 'e4', title: 'Moms\u2019 coffee + walk', category: 'social', starts_at: at(12, 9, 0), all_day: false, location: 'Holmes Lake trailhead', pickup_dropoff: '', details: 'Strollers welcome. Coffee after!', created_by: 'u-tanya', created_by_name: 'Tanya' },
-        { id: 'e5', title: 'No school — teacher workday', category: 'kids', starts_at: day(16), all_day: true, location: '', pickup_dropoff: '', details: 'Playdate at the park if weather is nice?', created_by: 'u-priya', created_by_name: 'Priya' },
-        { id: 'e0', title: 'Halloween parade', category: 'school', starts_at: at(-3, 13, 30), all_day: false, location: 'School playground', pickup_dropoff: '', details: '', created_by: 'u-jess', created_by_name: 'Jess' },
+        ...(window.MM_DEMO_CALENDAR || []).map((e) => {
+          const allDay = !e.start;
+          const starts = allDay ? parseDate(e.date) : new Date(`${e.date}T${e.start}`);
+          const ends = allDay ? (e.last_day ? parseDate(e.last_day) : null) : (e.end ? new Date(`${e.date}T${e.end}`) : null);
+          return { id: e.id, title: e.title, category: e.category, starts_at: starts.toISOString(), ends_at: ends ? ends.toISOString() : null,
+            all_day: allDay, location: e.location, pickup_dropoff: null, details: e.details, repeat_days: e.repeat_days, repeat_until: e.repeat_until,
+            created_by: 'u-miranda', created_by_name: 'Miranda' };
+        }),
+        { id: 'ride-demo', title: 'Jess takes the girls home (example)', category: 'rides', starts_at: new Date('2026-11-03T15:38').toISOString(),
+          ends_at: new Date('2026-11-03T17:15').toISOString(), all_day: false, location: null, pickup_dropoff: 'Pickup at dismissal, 3:38',
+          details: 'Example ride. Real pickups are added privately, not in the demo.', repeat_days: ['tue'], repeat_until: '2027-05-20', created_by: 'u-jess', created_by_name: 'Jess' },
       ],
       classrooms: [
         { id: 'c1', name: 'Mrs. Smith', schedule: { mon: ['Gym'], tue: ['Art'], wed: ['Gym'], thu: ['Music'], fri: ['Library'] }, notes: '', created_by: 'u-jess', created_by_name: 'Jess' },
@@ -210,9 +217,11 @@
   const CATS = [
     { id: 'pto', label: 'PTO' },
     { id: 'school', label: 'School' },
+    { id: 'noschool', label: 'No school' },
     { id: 'volunteer', label: 'Volunteer' },
     { id: 'social', label: 'Moms out' },
     { id: 'kids', label: 'Kids' },
+    { id: 'rides', label: 'Rides' },
   ];
   const catLabel = (id) => (CATS.find((c) => c.id === id) || { label: 'Other' }).label;
   const canEdit = (row) => state.me && (state.me.is_admin || row.created_by === state.me.id);
@@ -366,21 +375,81 @@
   }
 
   /* ---------------- events ---------------- */
+  const DOW = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  const DOW_SHORT = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+  const isRepeating = (ev) => Array.isArray(ev.repeat_days) && ev.repeat_days.length > 0;
+  const localDay = (iso) => { const d = new Date(iso); d.setHours(0, 0, 0, 0); return d; };
+  const lastDayOf = (ev) => (ev.ends_at ? localDay(ev.ends_at) : localDay(ev.starts_at));
+
+  // Every date covered by a "No school" item (breaks, holidays), so weekly
+  // things like rides skip those days automatically.
+  function noSchoolDates() {
+    const set = new Set();
+    for (const ev of state.events) {
+      if (ev.category !== 'noschool' || isRepeating(ev)) continue;
+      const d = localDay(ev.starts_at); const end = lastDayOf(ev);
+      for (let i = 0; d <= end && i < 60; i++) { set.add(isoDate(d)); d.setDate(d.getDate() + 1); }
+    }
+    return set;
+  }
+
+  function nextOccurrence(ev, from = startOfToday()) {
+    const off = noSchoolDates();
+    const first = localDay(ev.starts_at);
+    const d = new Date(Math.max(first, from));
+    const until = ev.repeat_until ? parseDate(ev.repeat_until) : null;
+    for (let i = 0; i < 400; i++) {
+      if (until && d > until) return null;
+      if (ev.repeat_days.includes(DOW[d.getDay()]) && !off.has(isoDate(d))) return new Date(d);
+      d.setDate(d.getDate() + 1);
+    }
+    return null;
+  }
+
+  function timeRange(ev) {
+    const s = new Date(ev.starts_at);
+    if (ev.all_day) return '';
+    const e = ev.ends_at ? new Date(ev.ends_at) : null;
+    if (!e) return fmtTime(s);
+    const a = fmtTime(s); const b = fmtTime(e);
+    const ampm = (x) => (x.match(/\s?[AP]M$/i) || [''])[0];
+    // "6:30–7:30 PM" instead of "6:30 PM–7:30 PM" when both are PM
+    return ampm(a) && ampm(a) === ampm(b) ? `${a.replace(ampm(a), '')}–${b}` : `${a}–${b}`;
+  }
+
+  function whenText(ev) {
+    const s = new Date(ev.starts_at);
+    if (isRepeating(ev)) {
+      const days = ev.repeat_days.map((k) => DOW_SHORT[k]).join(' & ');
+      const t = timeRange(ev);
+      return `Every ${days}${t ? ' · ' + t : ''}${ev.repeat_until ? ' · until ' + fmtDay(parseDate(ev.repeat_until)) : ''}`;
+    }
+    if (ev.all_day) {
+      const end = lastDayOf(ev);
+      return end > localDay(ev.starts_at) ? `${fmtDay(s)} – ${fmtDay(end)}` : `${fmtDay(s)} · All day`;
+    }
+    return `${fmtDay(s)} · ${timeRange(ev)}`;
+  }
+
   function eventCard(ev) {
-    const d = new Date(ev.starts_at);
-    const soonCutoff = new Date(); soonCutoff.setDate(soonCutoff.getDate() + 3);
-    const soon = d >= startOfToday() && d <= soonCutoff;
-    const when = ev.all_day ? `${fmtDay(d)} · All day` : `${fmtDay(d)} · ${fmtTime(d)}`;
+    const repeating = isRepeating(ev);
+    const next = repeating ? nextOccurrence(ev) : null;
+    const d = repeating ? (next || new Date(ev.starts_at)) : new Date(ev.starts_at);
+    const today = startOfToday();
+    const soonCutoff = new Date(today); soonCutoff.setDate(soonCutoff.getDate() + 3);
+    const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
+    const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article class="card event ${soon ? 'soon' : ''}">
+      <article class="card event ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''}">
         <div class="datebadge" aria-hidden="true">
           <span class="mon">${d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
           <span class="day">${d.getDate()}</span>
         </div>
         <div class="body">
-          <span class="chip chip-${esc(ev.category)}">${esc(catLabel(ev.category))}</span>
+          <span class="chip chip-${esc(ev.category)}">${esc(catLabel(ev.category))}</span>${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? ' <span class="chip chip-now">Happening now</span>' : ''}
           <h3>${esc(ev.title)}</h3>
-          <p class="meta">${ICON.clock}<span>${esc(when)}</span></p>
+          <p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>
+          ${repeating && next ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="18" height="18"')}<span><strong>Next:</strong> ${esc(fmtDay(next))}</span></p>` : ''}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<p class="details">${linkify(ev.details)}</p>` : ''}
@@ -396,13 +465,16 @@
   function eventsView() {
     const today = startOfToday();
     const match = (e) => state.filter === 'all' || e.category === state.filter;
-    const upcoming = state.events.filter((e) => new Date(e.starts_at) >= today && match(e));
-    const past = state.events.filter((e) => new Date(e.starts_at) < today && match(e)).reverse().slice(0, 10);
+    const weekly = state.events.filter((e) => isRepeating(e) && match(e) && (!e.repeat_until || parseDate(e.repeat_until) >= today));
+    const oneTime = state.events.filter((e) => !isRepeating(e) && match(e));
+    const upcoming = oneTime.filter((e) => lastDayOf(e) >= today);
+    const past = oneTime.filter((e) => lastDayOf(e) < today).reverse().slice(0, 10);
     const filters = [{ id: 'all', label: 'All' }, ...CATS].map((c) =>
       `<button class="filter ${state.filter === c.id ? 'on' : ''}" data-action="filter" data-filter="${c.id}">${c.label}</button>`).join('');
     return `
-      <div class="page-head"><div><h2>What's coming up</h2><p>PTO, school, volunteering and fun plans.</p></div></div>
+      <div class="page-head"><div><h2>What's coming up</h2><p>PTO, school days off, rides and fun plans.</p></div></div>
       <div class="filters" role="toolbar" aria-label="Filter events">${filters}</div>
+      ${weekly.length ? `<p class="section-label">Every week</p>${weekly.map(eventCard).join('')}<p class="section-label">Coming up</p>` : ''}
       ${upcoming.length ? upcoming.map(eventCard).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p><p>Tap the + button to add an event.</p></div>`}
       ${past.length ? `
@@ -410,8 +482,14 @@
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
   }
 
+  function lastSchoolDay() {
+    const hit = state.events.filter((e) => /last day of school/i.test(e.title)).map((e) => isoDate(localDay(e.starts_at))).sort().pop();
+    return hit || '';
+  }
+
   function addEventSheet(p = {}) {
     const cat = p.category || 'pto';
+    const reps = p.repeat_days || [];
     openSheet(`
       <h2>New event</h2>
       ${filledNote(p)}
@@ -421,10 +499,18 @@
           <div class="seg">${CATS.map((c) => `<label><input type="radio" name="category" value="${c.id}" ${c.id === cat ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
         </div>
         <div class="row2">
-          <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span>Date</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
-          <label class="field"><span>Time <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
+          <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span>${reps.length ? 'Starts' : 'Date'}</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
+          <label class="field"><span>Last day <small>(if more than one)</small></span><input class="input" type="date" name="end_date" value="${esc(p.end_date || '')}"></label>
         </div>
-        <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. School gym"></label>
+        <div class="row2">
+          <label class="field"><span>From <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
+          <label class="field"><span>To <small>(optional)</small></span><input class="input" type="time" name="end_time" value="${esc(p.end_time || '')}"></label>
+        </div>
+        <div class="field"><span>Repeats every week? <small>(optional)</small></span>
+          <div class="seg">${['mon', 'tue', 'wed', 'thu', 'fri'].map((k) => `<label><input type="checkbox" name="repeat_days" value="${k}" ${reps.includes(k) ? 'checked' : ''}><span>${DOW_SHORT[k]}</span></label>`).join('')}</div>
+          <label class="field" style="margin:10px 0 0"><span>Until <small>(skips days with no school)</small></span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
+        </div>
+        <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. Morley Library"></label>
         <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
         <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What to bring, sign-up links, anything else">${esc(p.details || '')}</textarea></label>
         <div class="sheet-actions">
@@ -434,12 +520,23 @@
       </form>`, async (fd) => {
       const date = fd.get('date');
       const time = fd.get('time');
+      const endTime = fd.get('end_time');
+      const endDate = fd.get('end_date');
+      const repeatDays = fd.getAll('repeat_days');
       const starts = time ? new Date(`${date}T${time}`) : parseDate(date);
+      let ends = null;
+      if (time && endTime) ends = new Date(`${date}T${endTime}`);
+      else if (!time && endDate && endDate > date) ends = parseDate(endDate);
+      if (ends && ends < starts) throw new Error('The end is before the start. Check the times.');
+      if (repeatDays.length && !fd.get('repeat_until')) throw new Error('Pick the last date it repeats until.');
       await api.addEvent({
         title: fd.get('title').trim(),
         category: fd.get('category'),
         starts_at: starts.toISOString(),
+        ends_at: ends ? ends.toISOString() : null,
         all_day: !time,
+        repeat_days: repeatDays.length ? repeatDays : null,
+        repeat_until: repeatDays.length ? fd.get('repeat_until') : null,
         location: fd.get('location').trim() || null,
         pickup_dropoff: fd.get('pickup_dropoff').trim() || null,
         details: fd.get('details').trim() || null,
@@ -456,15 +553,21 @@
     const ymd = (x) => `${x.getFullYear()}${pad(x.getMonth() + 1)}${pad(x.getDate())}`;
     let start; let end;
     if (ev.all_day) {
-      const next = new Date(d); next.setDate(next.getDate() + 1);
+      const next = new Date(lastDayOf(ev)); next.setDate(next.getDate() + 1);
       start = `DTSTART;VALUE=DATE:${ymd(d)}`; end = `DTEND;VALUE=DATE:${ymd(next)}`;
     } else {
-      start = `DTSTART:${utc(d)}`; end = `DTEND:${utc(new Date(d.getTime() + 60 * 60 * 1000))}`;
+      start = `DTSTART:${utc(d)}`;
+      end = `DTEND:${utc(ev.ends_at ? new Date(ev.ends_at) : new Date(d.getTime() + 60 * 60 * 1000))}`;
+    }
+    let rrule = '';
+    if (isRepeating(ev)) {
+      const by = ev.repeat_days.map((k) => k.slice(0, 2).toUpperCase()).join(',');
+      rrule = `RRULE:FREQ=WEEKLY;BYDAY=${by}${ev.repeat_until ? `;UNTIL=${ev.repeat_until.replace(/-/g, '')}T235959Z` : ''}`;
     }
     const desc = [ev.pickup_dropoff ? `Drop-off / pickup: ${ev.pickup_dropoff}` : '', ev.details || ''].filter(Boolean).join('\n\n');
     const ics = [
       'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Morley Moms//EN', 'BEGIN:VEVENT',
-      `UID:${ev.id}@morleymoms`, `DTSTAMP:${utc(new Date())}`, start, end,
+      `UID:${ev.id}@morleymoms`, `DTSTAMP:${utc(new Date())}`, start, end, rrule,
       `SUMMARY:${icsEsc(ev.title)}`,
       ev.location ? `LOCATION:${icsEsc(ev.location)}` : '',
       desc ? `DESCRIPTION:${icsEsc(desc)}` : '',

@@ -342,3 +342,10 @@ textarea.input { min-height: 90px; resize: vertical; }
 .tab .pill { width: 50px; }
 .sp-extras { display: block; width: 100%; margin-top: 10px; text-align: left; background: rgba(255,255,255,.12); border: 2px dashed rgba(255,255,255,.4); color: var(--white); border-radius: 14px; padding: 10px 12px; font-weight: 800; font-size: 15px; }
 .sp-extras small { font-weight: 600; opacity: .8; }
+
+/* ---------- v4: more event types ---------- */
+.chip-noschool { background: #FDECEB; color: var(--danger); }
+.chip-rides { background: var(--blue-soft); color: var(--blue-dark); border: 1.5px solid var(--blue); }
+.chip-now { background: var(--yellow); color: var(--ink); }
+.event.off .datebadge { background: #FDECEB; color: var(--danger); }
+.event.off.soon .datebadge { background: var(--danger); color: var(--white); }

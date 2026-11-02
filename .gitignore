@@ -5,3 +5,6 @@
 node_modules/
 out/
 backup/
+
+# Private preload with kids names: never commit
+*.private.sql
