@@ -462,3 +462,7 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .event.pto-event { background: #FFF8E1; border-left-color: #E0A100; }
 .event.pto-event .datebadge { background: #FFE9A6; color: #7A5600; }
 .event.pto-event.soon .datebadge { background: var(--yellow); color: var(--ink); }
+
+.datebadge { height: 70px; gap: 1px; }
+.datebadge .dow { font-size: 0.7059rem; font-weight: 800; letter-spacing: .08em; }
+.datebadge .mon { opacity: .75; }
