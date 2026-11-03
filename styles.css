@@ -514,3 +514,34 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
   .caret-btn { color: #9DB4FF; }
 }
 .words-btn { top: 10px; bottom: auto; transform: none; }
+
+/* Dark mode: let each kind of card show its color */
+@media (prefers-color-scheme: dark) {
+  .event.cat-pto { background: #1C2858; border-left-color: #7B9BFF; }
+  .event.cat-pto .datebadge { background: #2B3C85; color: #DCE5FF; }
+  .event.cat-school { background: #1B3347; border-left-color: #6CC4F0; }
+  .event.cat-school .datebadge { background: #27506F; color: #D6F0FF; }
+  .event.cat-volunteer { background: #3D3210; border-left-color: #FFC72C; }
+  .event.cat-volunteer .datebadge { background: #5E4C12; color: #FFE08A; }
+  .event.cat-social { background: #342547; border-left-color: #C9A8FF; }
+  .event.cat-social .datebadge { background: #4E3870; color: #EBDDFF; }
+  .event.cat-kids { background: #3A2F1B; border-left-color: #FFB74D; }
+  .event.cat-kids .datebadge { background: #5A4520; color: #FFD9A0; }
+  .event.cat-rides { background: #15343A; border-left-color: #4DD0C4; }
+  .event.cat-rides .datebadge { background: #1F5560; color: #CFF7F2; }
+  .event.cat-homework { background: #2C3345; border-left-color: #A8B4D6; }
+  .event.cat-homework .datebadge { background: #424C69; color: #E4E9F7; }
+  .event.cat-spelling { background: #20305E; border-left-color: #7B9BFF; }
+  .event.cat-spelling .datebadge { background: #34498A; color: #E1E8FF; }
+  .event.cat-noschool { background: #3A1A20; }
+  .event.pto-event { background: #3A3112; border-left-color: #F0B400; }
+  .event.cat-pto.soon .datebadge, .event.cat-school.soon .datebadge, .event.cat-volunteer.soon .datebadge, .event.cat-social.soon .datebadge,
+  .event.cat-kids.soon .datebadge, .event.cat-rides.soon .datebadge, .event.cat-homework.soon .datebadge, .event.cat-spelling.soon .datebadge,
+  .event.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
+  .event.off.soon .datebadge { background: var(--danger); color: #10131C; }
+}
+@media (prefers-color-scheme: dark) {
+  .event.cat-pto.pto-event .datebadge { background: #5A4A10; color: #FFE08A; }
+  .event .icon-btn:not(.on):not(.icon-link) { background: rgba(255,255,255,.12); color: #fff; }
+  .event.cat-pto.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
+}
