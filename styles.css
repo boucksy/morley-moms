@@ -566,3 +566,13 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 
 /* No colored stripe on the left edge of cards */
 .event, .event[class*="cat-"], .event.off, .event.pto-event, .event.soon { border-left: 0 !important; }
+
+.topbar #classSlot { display: contents; }
+.class-pick { width: auto; max-width: 120px; height: 36px; padding: 0 28px 0 12px; border-radius: 999px; border: 2px solid rgba(255,255,255,.5); background-color: rgba(255,255,255,.12); color: var(--on-color); font-weight: 800; font-size: .9rem; }
+.class-pick option { color: #10131C; background: #fff; }
+@media (prefers-color-scheme: dark) { .class-pick option { color: #EEF0F8; background: #1A2036; } }
+.topbar h1 { white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.class-pick { flex: none; width: 104px; max-width: 104px; padding: 0 24px 0 12px; text-overflow: ellipsis; }
+.topbar { gap: 8px; }
+.topbar h1 { font-size: 1.1rem; }
+.class-pick { width: 96px; max-width: 96px; box-sizing: border-box; padding: 0 22px 0 10px; }

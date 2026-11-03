@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 51;
+  const APP_VERSION = 52;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -437,6 +437,7 @@
         <header class="topbar">
           <span class="logo-mark">M</span>
           <h1>Morley Moms</h1>
+          <span id="classSlot"></span>
           <button class="avatar" data-action="account" aria-label="Your account">${esc(initials(state.me.display_name || state.me.email))}</button>
         </header>
         ${LIVE ? '' : '<div class="demo-banner">Demo mode — nothing you add is saved</div>'}
@@ -480,6 +481,7 @@
     if (state.tab === 'specials') view.innerHTML = specialsView();
     if (state.tab === 'members') view.innerHTML = membersView();
     fitDetails();
+    updateClassSlot();
     window.scrollTo(0, 0);
   }
   // Only keep the little caret where the one-line description is actually cut off.
@@ -571,12 +573,16 @@
           <select class="input" name="classroom_id"><option value="">Everyone</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === (selected === undefined ? '' : selected) ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
         </label>` : '';
   // The little "Showing for" bar, only once something has been marked for a class.
-  function classBar() {
+  const shortClass = (c) => c.name.replace(/^(ms|mrs|mr|miss|dr)\.?\s+/i, '').trim();
+  // Compact "which class" picker that lives in the header (shows just the teacher's last name).
+  function classBar() { return ''; }
+  function updateClassSlot() {
+    const slot = document.getElementById('classSlot');
+    if (!slot) return;
     const used = state.events.some((e) => e.classroom_id) || state.spelling.some((s) => s.classroom_id);
-    if (!used || !state.classrooms.length) return '';
+    if (!used || !state.classrooms.length || !['events', 'spelling'].includes(state.tab)) { slot.innerHTML = ''; return; }
     const mine = getMyClass();
-    return `<label class="class-bar"><span>Showing for</span>
-      <select class="input" id="myClass"><option value="">All classes</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === mine ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></label>`;
+    slot.innerHTML = `<select class="input class-pick" id="myClass" aria-label="Showing for which class"><option value="">All</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === mine ? 'selected' : ''}>${esc(shortClass(c))}</option>`).join('')}</select>`;
   }
 
   function spellTestCard(ev) {
