@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 56;
+  const APP_VERSION = 57;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -609,7 +609,7 @@
     const soon = d >= today && d <= soonCutoff;
     const label = testLabel(isoDate(d));
     return `
-      <article class="card event cat-spelling ${soon ? 'soon' : ''}">
+      <article class="card event cat-spelling ">
         ${dateBadge(d, ev)}
         <div class="body">
           <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
@@ -638,7 +638,7 @@
     const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article ${isRange(ev) ? `data-swipe="${esc(ev.id)}"` : ''} class="card event cat-${esc(ev.category)} ${ev.category === 'pto' && !/meeting/i.test(ev.title || '') ? 'pto-event' : ''} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
+      <article ${isRange(ev) ? `data-swipe="${esc(ev.id)}"` : ''} class="card event cat-${esc(ev.category)} ${ev.category === 'pto' && !/meeting/i.test(ev.title || '') ? 'pto-event' : ''} ${isDone(ev) ? 'turned-in' : ''}  ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
         ${dateBadge(d, ev)}
         <div class="body">
           ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
