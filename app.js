@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 48;
+  const APP_VERSION = 49;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -676,6 +676,57 @@
     return `Week of ${range}`;
   }
 
+  // ---- filter pills: pin up to 3, everything else lives in the ⋯ menu, in the order each mom picks ----
+  const FILTER_ORDER_KEY = 'mm.filterOrder', FILTER_PINS_KEY = 'mm.filterPins';
+  const ALL_FILTERS = () => [...CATS, { id: 'spelling', label: 'Spelling' }];
+  const readJson = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return Array.isArray(v) ? v : d; } catch { return d; } };
+  const writeJson = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  function filterOrder() {
+    const ids = ALL_FILTERS().map((c) => c.id);
+    const saved = readJson(FILTER_ORDER_KEY, []).filter((id) => ids.includes(id));
+    return [...saved, ...ids.filter((id) => !saved.includes(id))];
+  }
+  const filterPins = () => readJson(FILTER_PINS_KEY, ['homework', 'spelling']).filter((id) => ALL_FILTERS().some((c) => c.id === id)).slice(0, 3);
+  const filterLabel = (id) => (id === 'all' ? 'All' : (ALL_FILTERS().find((c) => c.id === id) || {}).label || id);
+  function filterBar() {
+    const pins = filterOrder().filter((id) => filterPins().includes(id));
+    const pill = (id) => `<button class="filter ${state.filter === id ? 'on' : ''}" data-action="filter" data-filter="${id}">${filterLabel(id)}</button>`;
+    const hidden = state.filter !== 'all' && !pins.includes(state.filter);
+    return pill('all') + pins.map(pill).join('') +
+      `<button class="filter more ${hidden ? 'on' : ''}" data-action="filter-menu" aria-label="All filters">${hidden ? esc(filterLabel(state.filter)) + ' ' : ''}\u22EF</button>`;
+  }
+  function filterSheet() {
+    const order = filterOrder(), pins = filterPins();
+    const rows = order.map((id, i) => `
+      <div class="frow">
+        <button class="frow-name ${state.filter === id ? 'on' : ''}" data-action="filter-pick" data-filter="${id}">${esc(filterLabel(id))}</button>
+        <button class="icon-btn" data-action="filter-up" data-filter="${id}" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>\u25B2</button>
+        <button class="icon-btn" data-action="filter-down" data-filter="${id}" aria-label="Move down" ${i === order.length - 1 ? 'disabled' : ''}>\u25BC</button>
+        <button class="pin-btn ${pins.includes(id) ? 'on' : ''}" data-action="filter-pin" data-filter="${id}" aria-pressed="${pins.includes(id)}">${pins.includes(id) ? 'Pinned' : 'Pin'}</button>
+      </div>`).join('');
+    const html = `<h2>Filters</h2>
+      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Tap a name to use it. Pin up to 3 to keep them on the main bar (${pins.length}/3). Use the arrows to reorder.</p>
+      <button class="frow-name ${state.filter === 'all' ? 'on' : ''}" data-action="filter-pick" data-filter="all" style="width:100%;margin-bottom:8px">All</button>
+      ${rows}
+      <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Done</button></div>`;
+    const sheet = document.querySelector('.sheet');
+    if (sheet && sheet.dataset.kind === 'filters') {
+      sheet.querySelectorAll(':scope > :not(.grab)').forEach((n) => n.remove());
+      sheet.insertAdjacentHTML('beforeend', html);
+    } else { openSheet(html); document.querySelector('.sheet').dataset.kind = 'filters'; }
+  }
+  function moveFilter(id, dir) {
+    const o = filterOrder(); const i = o.indexOf(id); const j = i + dir;
+    if (i < 0 || j < 0 || j >= o.length) return;
+    [o[i], o[j]] = [o[j], o[i]]; writeJson(FILTER_ORDER_KEY, o);
+  }
+  function togglePin(id) {
+    const p = filterPins();
+    if (p.includes(id)) writeJson(FILTER_PINS_KEY, p.filter((x) => x !== id));
+    else if (p.length >= 3) { toast('You can pin up to 3. Unpin one first.'); return; }
+    else writeJson(FILTER_PINS_KEY, [...p, id]);
+  }
+
   function eventsView() {
     const today = startOfToday();
     const off = noSchoolDates();
@@ -702,8 +753,7 @@
     }
     const shown = weeks.slice(0, state.weeksShown || 4);
     const past = oneTime.filter((e) => lastDayOf(e) < today).reverse().slice(0, 10);
-    const filters = [{ id: 'all', label: 'All' }, ...CATS, { id: 'spelling', label: 'Spelling' }].map((c) =>
-      `<button class="filter ${state.filter === c.id ? 'on' : ''}" data-action="filter" data-filter="${c.id}">${c.label}</button>`).join('');
+    const filters = filterBar();
     return `
       <div class="page-head"><div><h2>What's coming up</h2></div></div>
       ${classBar()}
@@ -1715,6 +1765,11 @@
     try {
       if (a === 'tab') { state.tab = el.dataset.tab; renderTabs(); renderView(); }
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
+      else if (a === 'filter-menu') filterSheet();
+      else if (a === 'filter-pick') { state.filter = el.dataset.filter; closeSheet(); renderView(); }
+      else if (a === 'filter-up') { moveFilter(el.dataset.filter, -1); filterSheet(); renderView(); }
+      else if (a === 'filter-down') { moveFilter(el.dataset.filter, 1); filterSheet(); renderView(); }
+      else if (a === 'filter-pin') { togglePin(el.dataset.filter); filterSheet(); renderView(); }
       else if (a === 'more-weeks') { const y = window.scrollY; state.weeksShown += 4; renderView(); window.scrollTo(0, y); }
       else if (a === 'toggle-past') { state.showPast = !state.showPast; renderView(); }
       else if (a === 'add') {

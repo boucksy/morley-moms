@@ -545,3 +545,12 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
   .event .icon-btn:not(.on):not(.icon-link) { background: rgba(255,255,255,.12); color: #fff; }
   .event.cat-pto.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
 }
+
+.filter.more { font-weight: 800; letter-spacing: .1em; }
+.frow { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.frow-name { flex: 1; text-align: left; padding: 10px 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--white); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+.frow-name.on { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+.frow .icon-btn { position: static; width: 38px; height: 38px; font-size: .8rem; }
+.frow .icon-btn[disabled] { opacity: .3; }
+.pin-btn { min-width: 72px; padding: 9px 10px; border: 2px solid var(--line); border-radius: 12px; background: transparent; color: var(--ink-2); font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
+.pin-btn.on { background: var(--yellow); border-color: var(--yellow); color: #10131C; }
