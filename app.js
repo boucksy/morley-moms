@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 55;
+  const APP_VERSION = 56;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -638,7 +638,7 @@
     const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article class="card event cat-${esc(ev.category)} ${ev.category === 'pto' && !/meeting/i.test(ev.title || '') ? 'pto-event' : ''} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
+      <article ${isRange(ev) ? `data-swipe="${esc(ev.id)}"` : ''} class="card event cat-${esc(ev.category)} ${ev.category === 'pto' && !/meeting/i.test(ev.title || '') ? 'pto-event' : ''} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
         ${dateBadge(d, ev)}
         <div class="body">
           ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
@@ -754,7 +754,7 @@
     }));
     const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
     const items = [
-      ...oneTime.filter((e) => lastDayOf(e) >= today && (!isDone(e) || state.filter === 'homework')),
+      ...oneTime.filter((e) => lastDayOf(e) >= today && (!isDone(e) || state.filter === 'homework') && !(isRange(e) && isHidden(e))),
       ...state.events.filter((e) => isRepeating(e) && match(e) && forMe(e)).flatMap((e) => occurrencesOf(e, today, off)),
     ];
     // Something already under way (like a break) is listed under this week.
@@ -775,6 +775,7 @@
       ${shown.length ? shown.map((w) => `${w.key === isoDate(mondayOf(today)) ? '' : `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>`}${w.items.map(eventCard).join('')}`).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
       ${weeks.length > shown.length ? `<button class="btn btn-ghost" style="width:100%;margin-top:4px" data-action="more-weeks">Show more weeks</button>` : ''}
+      ${state.events.some((e) => isRange(e) && isHidden(e)) ? `<button class="btn btn-ghost btn-small" style="margin-top:12px" data-action="hidden-cards">Hidden cards (${state.events.filter((e) => isRange(e) && isHidden(e)).length})</button>` : ''}
       ${past.length ? `
         <button class="btn btn-ghost btn-small" style="margin-top:12px" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
@@ -1083,6 +1084,21 @@
     const d = doneSet(); const k = String(id);
     if (d.has(k)) d.delete(k); else d.add(k);
     try { localStorage.setItem(DONE_KEY, JSON.stringify([...d])); } catch {}
+  }
+  // Swipe-left to hide a multi-day card (this phone only). They can be brought back from "Hidden cards".
+  const HIDE_KEY = 'mm.hiddenCards';
+  const hiddenIds = () => new Set(readJson(HIDE_KEY, []).map(String));
+  const isHidden = (ev) => hiddenIds().has(String(ev.id));
+  const isRange = (ev) => !ev._spell && !isRepeating(ev) && lastDayOf(ev) > localDay(ev.starts_at);
+  function hideCard(id) { const h = [...hiddenIds(), String(id)]; writeJson(HIDE_KEY, [...new Set(h)]); }
+  function unhideCard(id) { writeJson(HIDE_KEY, [...hiddenIds()].filter((x) => x !== String(id))); }
+  function hiddenSheet() {
+    const ids = hiddenIds();
+    const list = state.events.filter((e) => ids.has(String(e.id)));
+    openSheet(`<h2>Hidden cards</h2>
+      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Only hidden on this phone. Tap Show to bring one back.</p>
+      ${list.length ? list.map((e) => `<div class="frow"><div class="frow-name" style="cursor:default">${esc(e.title)}<br><small style="font-weight:600;color:var(--ink-2)">${esc(whenText(e))}</small></div><button class="pin-btn" data-action="unhide" data-id="${esc(e.id)}">Show</button></div>`).join('') : '<p>Nothing hidden.</p>'}
+      <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Done</button></div>`);
   }
   const PINCH_KEY = 'mm.pinchZoom';
   const pinchOn = () => { try { return localStorage.getItem(PINCH_KEY) === '1'; } catch { return false; } };
@@ -1772,6 +1788,32 @@
   }
 
   /* ---------------- actions ---------------- */
+  (function swipeToHide() {
+    let el = null, x0 = 0, y0 = 0, dx = 0, locked = false;
+    document.addEventListener('touchstart', (e) => {
+      const c = e.target.closest && e.target.closest('[data-swipe]');
+      if (!c || e.touches.length !== 1) { el = null; return; }
+      el = c; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; locked = false;
+      el.style.transition = 'none';
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (!el) return;
+      const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!locked) { if (Math.abs(my) > 10 && Math.abs(my) > Math.abs(mx)) { el.style.transform = ''; el = null; return; } if (Math.abs(mx) > 10) locked = true; else return; }
+      dx = Math.min(0, mx);
+      el.style.transform = `translateX(${dx}px)`; el.style.opacity = String(Math.max(.35, 1 - Math.abs(dx) / 260));
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+      if (!el) return;
+      const c = el; el = null; c.style.transition = 'transform .18s, opacity .18s';
+      if (dx < -90) {
+        c.style.transform = 'translateX(-110%)'; c.style.opacity = '0';
+        const id = c.dataset.swipe;
+        setTimeout(() => { const y = window.scrollY; hideCard(id); renderView(); window.scrollTo(0, y); toast('Hidden on this phone. Find it under \u201CHidden cards\u201D at the bottom.'); }, 180);
+      } else { c.style.transform = ''; c.style.opacity = ''; }
+    }, { passive: true });
+  })();
+
   document.addEventListener('click', async (e) => {
     const el = e.target.closest('[data-action]');
     if (!el) return;
@@ -1780,6 +1822,8 @@
       if (a === 'tab') { state.tab = el.dataset.tab; renderTabs(); renderView(); }
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
       else if (a === 'filter-menu') filterSheet();
+      else if (a === 'hidden-cards') hiddenSheet();
+      else if (a === 'unhide') { unhideCard(el.dataset.id); hiddenSheet(); renderView(); }
       else if (a === 'filter-pick') { state.filter = el.dataset.filter; closeSheet(); renderView(); }
       else if (a === 'filter-up') { moveFilter(el.dataset.filter, -1); filterSheet(); renderView(); }
       else if (a === 'filter-down') { moveFilter(el.dataset.filter, 1); filterSheet(); renderView(); }
