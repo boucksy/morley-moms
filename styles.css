@@ -585,15 +585,9 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .event .datebadge.short .dow { font-size: .95rem; letter-spacing: .06em; }
 
 html, body { overscroll-behavior-y: contain; }
-.ptr { position: fixed; left: 50%; top: calc(var(--safe-top) + 64px); margin-left: -18px; width: 36px; height: 36px; border-radius: 50%; background: var(--white); box-shadow: var(--shadow); display: grid; place-items: center; z-index: 30; opacity: 0; transform: translateY(0); pointer-events: none; transition: opacity .15s; }
-.ptr-spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--blue); }
-.ptr.spin .ptr-spin { animation: ptrspin .7s linear infinite; }
+.ptr-zone { height: 0; overflow: hidden; background: var(--blue); display: flex; align-items: flex-end; justify-content: center; box-sizing: border-box; }
+.ptr-spin { margin-bottom: 14px; width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .15s; }
+.ptr-zone.show .ptr-spin { opacity: .8; transform: scale(.85); }
+.ptr-zone.ready .ptr-spin { opacity: 1; transform: scale(1); }
+.ptr-zone.spin .ptr-spin { opacity: 1; transform: scale(1); animation: ptrspin .7s linear infinite; }
 @keyframes ptrspin { to { transform: rotate(360deg); } }
-
-/* Title-only cards (like rides): center everything vertically */
-.event:has(.body > h3:first-child + .card-tools:last-child) { align-items: center; }
-.event:has(.body > h3:first-child + .card-tools:last-child) .body h3 { margin: 0; }
-.event:has(.body > h3:first-child + .card-tools:last-child) .card-tools { top: 50%; transform: translateY(-50%); }
-.event:has(.body > h3:first-child + .card-tools:last-child) .body { padding-right: 40px; }
-.event:has(.body > h3:first-child + .card-tools:last-child) .body h3 { font-size: .98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.event:has(.body > h3:first-child + .card-tools:last-child) .body h3 { font-size: .9rem; }

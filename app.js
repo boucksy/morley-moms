@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 59;
+  const APP_VERSION = 60;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -440,6 +440,7 @@
           <span id="classSlot"></span>
           <button class="avatar" data-action="account" aria-label="Your account">${esc(initials(state.me.display_name || state.me.email))}</button>
         </header>
+        <div class="ptr-zone" aria-hidden="true"><span class="ptr-spin"></span></div>
         ${LIVE ? '' : '<div class="demo-banner">Demo mode — nothing you add is saved</div>'}
         <main class="content" id="view"></main>
         <button class="fab" data-action="add" aria-label="Add">${ICON.plus}</button>
@@ -1788,33 +1789,36 @@
   }
 
   /* ---------------- actions ---------------- */
-  // Pull down from the top of the page to refresh.
+  // Pull down from the top of the page: the blue header stretches, a spinner shows, then it springs back.
   (function pullToRefresh() {
     let y0 = 0, pull = 0, active = false, busy = false;
-    const bar = document.createElement('div');
-    bar.className = 'ptr'; bar.setAttribute('aria-hidden', 'true'); bar.innerHTML = '<span class="ptr-spin"></span>';
-    document.body.appendChild(bar);
-    const set = (px, spin) => { bar.style.transform = `translateY(${px}px)`; bar.style.opacity = px > 6 ? '1' : '0'; bar.classList.toggle('spin', !!spin); };
+    const zone = () => document.querySelector('.ptr-zone');
+    const setH = (px, anim) => { const z = zone(); if (!z) return; z.style.transition = anim ? 'height .22s ease' : 'none'; z.style.height = px + 'px'; z.classList.toggle('show', px > 18); };
     document.addEventListener('touchstart', (e) => {
       active = false;
-      if (busy || e.touches.length !== 1 || window.scrollY > 0 || document.querySelector('.sheet-backdrop') || e.target.closest('[data-swipe], input, textarea, select')) return;
+      if (busy || !zone() || e.touches.length !== 1 || window.scrollY > 0 || document.querySelector('.sheet-backdrop') || e.target.closest('[data-swipe], input, textarea, select')) return;
       y0 = e.touches[0].clientY; pull = 0; active = true;
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
       if (!active) return;
       const dy = e.touches[0].clientY - y0;
-      if (dy <= 0 || window.scrollY > 0) { if (pull) set(0); pull = 0; return; }
+      if (dy <= 0 || window.scrollY > 0) { if (pull) setH(0); pull = 0; return; }
       if (e.cancelable) e.preventDefault();
-      pull = Math.min(dy * 0.5, 80); set(pull);
+      pull = Math.min(dy * 0.55, 96); setH(pull);
+      const z = zone(); if (z) z.classList.toggle('ready', pull >= 64);
     }, { passive: false });
     document.addEventListener('touchend', async () => {
       if (!active) return; active = false;
-      if (pull >= 60 && !busy) {
-        busy = true; set(56, true);
+      const z = zone();
+      if (pull >= 64 && !busy) {
+        busy = true; setH(56, true); if (z) z.classList.add('spin');
+        const t0 = Date.now();
         try { await refresh(); } catch {}
-        busy = false;
-      }
-      set(0); pull = 0;
+        const wait = 500 - (Date.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        if (z) z.classList.remove('spin');
+        setH(0, true); busy = false;
+      } else setH(0, true);
+      if (z) z.classList.remove('ready'); pull = 0;
     }, { passive: true });
   })();
 
