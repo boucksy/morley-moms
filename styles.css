@@ -584,7 +584,8 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .event .datebadge.short { height: 40px; width: 56px; }
 .event .datebadge.short .dow { font-size: .95rem; letter-spacing: .06em; }
 
-html, body { overscroll-behavior-y: contain; }
+html, body { overscroll-behavior: none; }
+html { background: var(--bg); }
 .ptr-zone { height: 0; overflow: hidden; background: var(--blue); display: flex; align-items: flex-start; justify-content: center; box-sizing: border-box; }
 .ptr-spin { margin-top: calc(var(--safe, 0px) + 14px); width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .15s; }
 .ptr-zone.show .ptr-spin { opacity: .8; transform: scale(.85); }

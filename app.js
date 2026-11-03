@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 61;
+  const APP_VERSION = 62;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1789,39 +1789,56 @@
   }
 
   /* ---------------- actions ---------------- */
-  // Pull down from the top of the page: the blue header stretches, a spinner shows, then it springs back.
+  // Pull down from the top of the page: the blue header stretches with your finger (up to 1/3 of the screen),
+  // a spinner shows above the header content, then it springs back.
   (function pullToRefresh() {
-    let y0 = 0, pull = 0, active = false, busy = false;
+    const TRIGGER = 90;
+    let anchor = null, pull = 0, tracking = false, busy = false, raf = 0;
     const zone = () => document.querySelector('.ptr-zone');
     const safe = () => { const t = document.querySelector('.topbar'); return t ? Math.max(0, parseFloat(getComputedStyle(t).paddingTop) - 12) : 0; };
-    const LIMIT = () => safe() + 100, HOLD = () => safe() + 52, NEED = () => safe() + 60;
-    const setH = (px, anim) => { const z = zone(); if (!z) return; z.style.transition = anim ? 'height .22s ease' : 'none'; z.style.height = px + 'px'; z.classList.toggle('show', px > 18); };
+    const maxPull = () => Math.round(window.innerHeight / 3);
+    const setH = (px, anim) => {
+      const z = zone(); if (!z) return;
+      z.style.setProperty('--safe', safe() + 'px');
+      z.style.transition = anim ? 'height .25s cubic-bezier(.2,.8,.2,1)' : 'none';
+      z.style.height = px + 'px';
+      z.classList.toggle('show', px > 18);
+      z.classList.toggle('ready', px >= TRIGGER);
+    };
+    const blocked = (t) => busy || !zone() || document.querySelector('.sheet-backdrop') || (t.closest && t.closest('[data-swipe], input, textarea, select'));
     document.addEventListener('touchstart', (e) => {
-      active = false;
-      if (busy || !zone() || e.touches.length !== 1 || window.scrollY > 0 || document.querySelector('.sheet-backdrop') || e.target.closest('[data-swipe], input, textarea, select')) return;
-      y0 = e.touches[0].clientY; pull = 0; active = true;
+      tracking = false; anchor = null; pull = 0;
+      if (blocked(e.target) || e.touches.length !== 1) return;
+      tracking = true;
+      anchor = window.scrollY <= 0 ? e.touches[0].clientY : null;
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
-      if (!active) return;
-      const dy = e.touches[0].clientY - y0;
-      if (dy <= 0 || window.scrollY > 0) { if (pull) setH(0); pull = 0; return; }
-      if (e.cancelable) e.preventDefault();
-      pull = Math.min(dy * 0.55, LIMIT()); setH(pull);
-      const z = zone(); if (z) { z.style.setProperty('--safe', safe() + 'px'); z.classList.toggle('ready', pull >= NEED()); }
+      if (!tracking || busy) return;
+      const y = e.touches[0].clientY;
+      if (window.scrollY > 0) { anchor = null; if (pull) { pull = 0; setH(0); } return; }
+      if (anchor === null) anchor = y;               // reached the top mid-scroll: start pulling from here
+      const dy = y - anchor;
+      if (dy <= 0) { if (pull) { pull = 0; setH(0); } return; }
+      if (e.cancelable) e.preventDefault();          // stop the page itself from rubber-banding
+      pull = Math.min(dy, maxPull());
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; setH(pull); });
     }, { passive: false });
-    document.addEventListener('touchend', async () => {
-      if (!active) return; active = false;
+    const end = async () => {
+      if (!tracking) return; tracking = false; anchor = null;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
       const z = zone();
-      if (pull >= NEED() && !busy) {
-        busy = true; setH(HOLD(), true); if (z) z.classList.add('spin');
+      if (pull >= TRIGGER && !busy) {
+        busy = true; setH(TRIGGER, true); if (z) z.classList.add('spin');
         const t0 = Date.now();
         try { await refresh(); } catch {}
-        const wait = 500 - (Date.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+        const wait = 600 - (Date.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
         if (z) z.classList.remove('spin');
         setH(0, true); busy = false;
       } else setH(0, true);
-      if (z) z.classList.remove('ready'); pull = 0;
-    }, { passive: true });
+      pull = 0;
+    };
+    document.addEventListener('touchend', end, { passive: true });
+    document.addEventListener('touchcancel', end, { passive: true });
   })();
 
   (function swipeToHide() {
