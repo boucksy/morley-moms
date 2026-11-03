@@ -592,3 +592,9 @@ html { background: var(--bg); }
 .ptr-zone.ready .ptr-spin { opacity: 1; transform: scale(1); }
 .ptr-zone.spin .ptr-spin { opacity: 1; transform: scale(1); animation: ptrspin .7s linear infinite; }
 @keyframes ptrspin { from { transform: scale(1) rotate(0deg); } to { transform: scale(1) rotate(360deg); } }
+
+/* Title-only cards (like rides): center everything vertically, title on one line */
+.event:has(.body > h3:first-child + .card-tools:last-child) { align-items: center; }
+.event:has(.body > h3:first-child + .card-tools:last-child) .body { padding-right: 40px; }
+.event:has(.body > h3:first-child + .card-tools:last-child) .body h3 { margin: 0; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.event:has(.body > h3:first-child + .card-tools:last-child) .card-tools { top: 50%; transform: translateY(-50%); }
