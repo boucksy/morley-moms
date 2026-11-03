@@ -513,3 +513,4 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
   .words-btn { color: #9DB4FF; border-color: #9DB4FF; }
   .caret-btn { color: #9DB4FF; }
 }
+.words-btn { top: 10px; bottom: auto; transform: none; }
