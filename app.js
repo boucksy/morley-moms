@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 52;
+  const APP_VERSION = 53;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -761,10 +761,9 @@
     const past = oneTime.filter((e) => lastDayOf(e) < today).reverse().slice(0, 10);
     const filters = filterBar();
     return `
-      <div class="page-head"><div><h2>What's coming up</h2></div></div>
-      ${classBar()}
+      <div class="page-head"><div><h2>${esc(weekHeading(mondayOf(today)))}</h2></div></div>
       <div class="filters" role="toolbar" aria-label="Filter events">${filters}</div>
-      ${shown.length ? shown.map((w) => `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>${w.items.map(eventCard).join('')}`).join('') : `
+      ${shown.length ? shown.map((w) => `${w.key === isoDate(mondayOf(today)) ? '' : `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>`}${w.items.map(eventCard).join('')}`).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
       ${weeks.length > shown.length ? `<button class="btn btn-ghost" style="width:100%;margin-top:4px" data-action="more-weeks">Show more weeks</button>` : ''}
       ${past.length ? `
