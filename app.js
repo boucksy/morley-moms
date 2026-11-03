@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 40;
+  const APP_VERSION = 41;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -579,7 +579,7 @@
         <div class="body">
           <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
           <p class="meta">${ICON.clock}<span><strong>${esc(label || fmtDay(d))}</strong></span></p>
-          <button class="btn btn-ghost btn-small" style="margin-top:8px" data-action="see-spelling" data-id="${esc(ev.spell_id)}">See the words</button>
+          <button class="words-btn" data-action="see-spelling" data-id="${esc(ev.spell_id)}" aria-label="See the spelling words">Words <span aria-hidden="true">›</span></button>
         </div>
       </article>`;
   }
@@ -603,7 +603,7 @@
     const happeningNow = !repeating && localDay(ev.starts_at) <= today && lastDayOf(ev) >= today;
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
-      <article class="card event cat-${esc(ev.category)} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
+      <article class="card event cat-${esc(ev.category)} ${ev.category === 'pto' && !/meeting/i.test(ev.title || '') ? 'pto-event' : ''} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
         <div class="datebadge" aria-hidden="true">
           <span class="mon">${d.toLocaleDateString(undefined, { month: 'short' }).toUpperCase()}</span>
           <span class="day">${d.getDate()}</span>
