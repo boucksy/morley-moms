@@ -563,3 +563,6 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 }
 
 @media (prefers-color-scheme: dark) { .sp-ask-btns.light .sp-num.on { color: #fff; } }
+
+/* No colored stripe on the left edge of cards */
+.event, .event[class*="cat-"], .event.off, .event.pto-event, .event.soon { border-left: 0 !important; }
