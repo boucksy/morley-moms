@@ -583,3 +583,9 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 
 .event .datebadge.short { height: 40px; width: 56px; }
 .event .datebadge.short .dow { font-size: .95rem; letter-spacing: .06em; }
+
+html, body { overscroll-behavior-y: contain; }
+.ptr { position: fixed; left: 50%; top: calc(var(--safe-top) + 64px); margin-left: -18px; width: 36px; height: 36px; border-radius: 50%; background: var(--white); box-shadow: var(--shadow); display: grid; place-items: center; z-index: 30; opacity: 0; transform: translateY(0); pointer-events: none; transition: opacity .15s; }
+.ptr-spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--blue); }
+.ptr.spin .ptr-spin { animation: ptrspin .7s linear infinite; }
+@keyframes ptrspin { to { transform: rotate(360deg); } }

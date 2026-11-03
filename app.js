@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 57;
+  const APP_VERSION = 58;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1788,6 +1788,36 @@
   }
 
   /* ---------------- actions ---------------- */
+  // Pull down from the top of the page to refresh.
+  (function pullToRefresh() {
+    let y0 = 0, pull = 0, active = false, busy = false;
+    const bar = document.createElement('div');
+    bar.className = 'ptr'; bar.setAttribute('aria-hidden', 'true'); bar.innerHTML = '<span class="ptr-spin"></span>';
+    document.body.appendChild(bar);
+    const set = (px, spin) => { bar.style.transform = `translateY(${px}px)`; bar.style.opacity = px > 6 ? '1' : '0'; bar.classList.toggle('spin', !!spin); };
+    document.addEventListener('touchstart', (e) => {
+      active = false;
+      if (busy || e.touches.length !== 1 || window.scrollY > 0 || document.querySelector('.sheet-backdrop') || e.target.closest('[data-swipe], input, textarea, select')) return;
+      y0 = e.touches[0].clientY; pull = 0; active = true;
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (!active) return;
+      const dy = e.touches[0].clientY - y0;
+      if (dy <= 0 || window.scrollY > 0) { if (pull) set(0); pull = 0; return; }
+      if (e.cancelable) e.preventDefault();
+      pull = Math.min(dy * 0.5, 80); set(pull);
+    }, { passive: false });
+    document.addEventListener('touchend', async () => {
+      if (!active) return; active = false;
+      if (pull >= 60 && !busy) {
+        busy = true; set(56, true);
+        try { await refresh(); } catch {}
+        busy = false;
+      }
+      set(0); pull = 0;
+    }, { passive: true });
+  })();
+
   (function swipeToHide() {
     let el = null, x0 = 0, y0 = 0, dx = 0, locked = false;
     document.addEventListener('touchstart', (e) => {
