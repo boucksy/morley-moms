@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 43;
+  const APP_VERSION = 44;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -525,6 +525,13 @@
     return ampm(a) && ampm(a) === ampm(b) ? `${a.replace(ampm(a), '')}–${b}` : `${a}–${b}`;
   }
 
+  // Ride cards read "Name takes Emora home" so they fit on one line.
+  function rideTitle(t) {
+    t = String(t || '').trim();
+    let m = /^(.+?)\s+takes\s+(.+?)\s+home(?:\s+from school)?\.?$/i.exec(t);
+    if (!m) m = /^(.+?)\s+(?:picks up|is picking up|will pick up|drives|is taking|takes)\s+(.+?)(?:\s+(?:home|from school|up from school))?\.?$/i.exec(t);
+    return m ? `${m[1]} takes ${m[2]} home` : t;
+  }
   function whenText(ev) {
     const s = new Date(ev.starts_at);
     if (isRepeating(ev)) {
@@ -613,8 +620,8 @@
         <div class="body">
           ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
           ${ev.canceled ? '<span class="chip chip-canceled">Canceled</span>' : ev.replaces ? '<span class="chip chip-now">Changed</span>' : ''}
-          <h3>${esc(ev.title)}</h3>
-          <p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>
+          <h3>${esc(ev.category === 'rides' ? rideTitle(ev.title) : ev.title)}</h3>
+          ${ev.category === 'rides' ? '' : `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>`}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}

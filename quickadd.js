@@ -367,7 +367,7 @@
     const ride = findRide(raw);
     if (ride && !every && (out.category === 'rides' || ['school', 'kids'].includes(out.category))) {
       out.category = 'rides';
-      out.title = ride.driver ? `${ride.driver} picks up ${ride.kid}` : `Pickup: ${ride.kid}`;
+      out.title = ride.driver ? `${ride.driver} takes ${ride.kid} home` : `Pickup: ${ride.kid}`;
       out.kid = ride.kid;
       out.details = String(raw || '').trim().slice(0, 2000);
       out.location = '';
