@@ -585,8 +585,8 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .event .datebadge.short .dow { font-size: .95rem; letter-spacing: .06em; }
 
 html, body { overscroll-behavior-y: contain; }
-.ptr-zone { height: 0; overflow: hidden; background: var(--blue); display: flex; align-items: flex-end; justify-content: center; box-sizing: border-box; }
-.ptr-spin { margin-bottom: 14px; width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .15s; }
+.ptr-zone { height: 0; overflow: hidden; background: var(--blue); display: flex; align-items: flex-start; justify-content: center; box-sizing: border-box; }
+.ptr-spin { margin-top: calc(var(--safe, 0px) + 14px); width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .15s; }
 .ptr-zone.show .ptr-spin { opacity: .8; transform: scale(.85); }
 .ptr-zone.ready .ptr-spin { opacity: 1; transform: scale(1); }
 .ptr-zone.spin .ptr-spin { opacity: 1; transform: scale(1); animation: ptrspin .7s linear infinite; }

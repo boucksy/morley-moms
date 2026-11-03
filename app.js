@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 60;
+  const APP_VERSION = 61;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -434,13 +434,13 @@
   function renderShell() {
     $('#app').innerHTML = `
       <div class="shell">
+        <div class="ptr-zone" aria-hidden="true"><span class="ptr-spin"></span></div>
         <header class="topbar">
           <span class="logo-mark">M</span>
           <h1>Morley Moms</h1>
           <span id="classSlot"></span>
           <button class="avatar" data-action="account" aria-label="Your account">${esc(initials(state.me.display_name || state.me.email))}</button>
         </header>
-        <div class="ptr-zone" aria-hidden="true"><span class="ptr-spin"></span></div>
         ${LIVE ? '' : '<div class="demo-banner">Demo mode — nothing you add is saved</div>'}
         <main class="content" id="view"></main>
         <button class="fab" data-action="add" aria-label="Add">${ICON.plus}</button>
@@ -1793,6 +1793,8 @@
   (function pullToRefresh() {
     let y0 = 0, pull = 0, active = false, busy = false;
     const zone = () => document.querySelector('.ptr-zone');
+    const safe = () => { const t = document.querySelector('.topbar'); return t ? Math.max(0, parseFloat(getComputedStyle(t).paddingTop) - 12) : 0; };
+    const LIMIT = () => safe() + 100, HOLD = () => safe() + 52, NEED = () => safe() + 60;
     const setH = (px, anim) => { const z = zone(); if (!z) return; z.style.transition = anim ? 'height .22s ease' : 'none'; z.style.height = px + 'px'; z.classList.toggle('show', px > 18); };
     document.addEventListener('touchstart', (e) => {
       active = false;
@@ -1804,14 +1806,14 @@
       const dy = e.touches[0].clientY - y0;
       if (dy <= 0 || window.scrollY > 0) { if (pull) setH(0); pull = 0; return; }
       if (e.cancelable) e.preventDefault();
-      pull = Math.min(dy * 0.55, 96); setH(pull);
-      const z = zone(); if (z) z.classList.toggle('ready', pull >= 64);
+      pull = Math.min(dy * 0.55, LIMIT()); setH(pull);
+      const z = zone(); if (z) { z.style.setProperty('--safe', safe() + 'px'); z.classList.toggle('ready', pull >= NEED()); }
     }, { passive: false });
     document.addEventListener('touchend', async () => {
       if (!active) return; active = false;
       const z = zone();
-      if (pull >= 64 && !busy) {
-        busy = true; setH(56, true); if (z) z.classList.add('spin');
+      if (pull >= NEED() && !busy) {
+        busy = true; setH(HOLD(), true); if (z) z.classList.add('spin');
         const t0 = Date.now();
         try { await refresh(); } catch {}
         const wait = 500 - (Date.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
