@@ -586,9 +586,9 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 
 html, body { overscroll-behavior: none; }
 html { background: var(--bg); }
-.ptr-zone { height: 0; overflow: hidden; background: var(--blue); display: flex; align-items: flex-start; justify-content: center; box-sizing: border-box; }
-.ptr-spin { margin-top: calc(var(--safe, 0px) + 14px); width: 22px; height: 22px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; opacity: 0; transform: scale(.6); transition: opacity .15s, transform .15s; }
+.ptr-zone { position: relative; height: 0; overflow: hidden; background: var(--blue); display: flex; align-items: flex-start; justify-content: center; box-sizing: border-box; }
+.ptr-spin { position: absolute; left: 50%; top: calc((100% + var(--safe, 0px)) / 2); margin: -13px 0 0 -13px; width: 26px; height: 26px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; opacity: 0; transform: scale(.6) rotate(0deg); transition: opacity .15s, transform .15s; }
 .ptr-zone.show .ptr-spin { opacity: .8; transform: scale(.85); }
 .ptr-zone.ready .ptr-spin { opacity: 1; transform: scale(1); }
 .ptr-zone.spin .ptr-spin { opacity: 1; transform: scale(1); animation: ptrspin .7s linear infinite; }
-@keyframes ptrspin { to { transform: rotate(360deg); } }
+@keyframes ptrspin { from { transform: scale(1) rotate(0deg); } to { transform: scale(1) rotate(360deg); } }

@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 62;
+  const APP_VERSION = 63;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1805,17 +1805,23 @@
       z.classList.toggle('show', px > 18);
       z.classList.toggle('ready', px >= TRIGGER);
     };
-    const blocked = (t) => busy || !zone() || document.querySelector('.sheet-backdrop') || (t.closest && t.closest('[data-swipe], input, textarea, select'));
+    const blocked = (t) => busy || !zone() || document.querySelector('.sheet-backdrop') || (t.closest && t.closest('input, textarea, select'));
+    let x0 = 0, axis = '';
     document.addEventListener('touchstart', (e) => {
-      tracking = false; anchor = null; pull = 0;
+      tracking = false; anchor = null; pull = 0; axis = '';
       if (blocked(e.target) || e.touches.length !== 1) return;
-      tracking = true;
-      anchor = window.scrollY <= 0 ? e.touches[0].clientY : null;
+      tracking = true; x0 = e.touches[0].clientX;
+      anchor = window.scrollY <= 1 ? e.touches[0].clientY : null;
     }, { passive: true });
     document.addEventListener('touchmove', (e) => {
       if (!tracking || busy) return;
       const y = e.touches[0].clientY;
-      if (window.scrollY > 0) { anchor = null; if (pull) { pull = 0; setH(0); } return; }
+      if (!axis) {                                    // decide once: mostly sideways (a card swipe) or mostly down
+        const ax = Math.abs(e.touches[0].clientX - x0), ay = Math.abs(y - (anchor === null ? y : anchor));
+        if (ax > 8 && ax > ay) { tracking = false; return; }
+        if (ay > 8 || window.scrollY > 1) axis = 'v';
+      }
+      if (window.scrollY > 1) { anchor = null; if (pull) { pull = 0; setH(0); } return; }
       if (anchor === null) anchor = y;               // reached the top mid-scroll: start pulling from here
       const dy = y - anchor;
       if (dy <= 0) { if (pull) { pull = 0; setH(0); } return; }
