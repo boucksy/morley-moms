@@ -418,7 +418,8 @@ input[type="date"].input, input[type="time"].input { min-height: 52px; }
 .card-tools { flex-direction: column; }
 .event .body { padding-right: 44px; }
 .event h3 { padding-right: 0; }
-.event { min-height: 96px; }
+.event { min-height: 0; }
+.event:has(.datebadge:not(.short)) { min-height: 96px; }
 
 /* ---------- v11: one-day changes ---------- */
 .chip-canceled { background: var(--danger); color: var(--on-color); margin-bottom: 4px; }
@@ -579,3 +580,6 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .class-pick { width: auto; max-width: none; min-width: 0; padding: 0 26px 0 12px; font-size: .85rem; text-overflow: clip; }
 .topbar h1 { flex: 1 1 auto; }
 @media (max-width: 380px) { .topbar h1 { font-size: .95rem; } }
+
+.event .datebadge.short { height: 40px; width: 56px; }
+.event .datebadge.short .dow { font-size: .95rem; letter-spacing: .06em; }

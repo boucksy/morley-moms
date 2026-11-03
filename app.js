@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 54;
+  const APP_VERSION = 55;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -550,6 +550,7 @@
       return `Every ${days}${t ? ' · ' + t : ''}${ev.repeat_until ? ' · until ' + fmtDay(parseDate(ev.repeat_until)) : ''}`;
     }
     if (ev.category === 'homework' && !isRepeating(ev) && (ev.all_day || !timeRange(ev))) return `Due ${fmtDay(s)}`;
+    if (lastDayOf(ev) > localDay(ev.starts_at)) return `${fmtDay(s)} \u2013 ${fmtDay(lastDayOf(ev))}`;
     if (ev.all_day) {
       const end = lastDayOf(ev);
       if (end > localDay(ev.starts_at)) return `${fmtDay(s)} – ${fmtDay(end)}`;
@@ -585,6 +586,22 @@
     slot.innerHTML = `<select class="input class-pick" id="myClass" aria-label="Showing for which class"><option value="">All</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === mine ? 'selected' : ''}>${esc(shortClass(c))}</option>`).join('')}</select>`;
   }
 
+  // Date block: none for multi-day things (the text shows the range); just the weekday for this week;
+  // weekday + number + month for later weeks and for homework due dates.
+  function dateBadge(d, ev) {
+    if (!ev._spell && !isRepeating(ev) && lastDayOf(ev) > localDay(ev.starts_at)) return '';
+    const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const nextMon = mondayOf(startOfToday()); nextMon.setDate(nextMon.getDate() + 7);
+    if (ev.category !== 'homework' && localDay(d.toISOString()) < nextMon) {
+      return `<div class="datebadge short" aria-hidden="true"><span class="dow">${dow}</span></div>`;
+    }
+    return `<div class="datebadge" aria-hidden="true">
+          <span class="dow">${dow}</span>
+          <span class="day">${d.getDate()}</span>
+          <span class="mon">${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</span>
+        </div>`;
+  }
+
   function spellTestCard(ev) {
     const d = new Date(ev.starts_at);
     const today = startOfToday();
@@ -593,11 +610,7 @@
     const label = testLabel(isoDate(d));
     return `
       <article class="card event cat-spelling ${soon ? 'soon' : ''}">
-        <div class="datebadge" aria-hidden="true">
-          <span class="dow">${d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</span>
-          <span class="day">${d.getDate()}</span>
-          <span class="mon">${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</span>
-        </div>
+        ${dateBadge(d, ev)}
         <div class="body">
           <h3>Spelling test${ev.subtitle ? ' · ' + esc(ev.subtitle) : ''}</h3>
           <p class="meta">${ICON.clock}<span><strong>${esc(label || 'Test day')}</strong></span></p>
@@ -626,11 +639,7 @@
     const soon = happeningNow || (d >= today && d <= soonCutoff);
     return `
       <article class="card event cat-${esc(ev.category)} ${ev.category === 'pto' && !/meeting/i.test(ev.title || '') ? 'pto-event' : ''} ${isDone(ev) ? 'turned-in' : ''} ${soon ? 'soon' : ''} ${ev.category === 'noschool' ? 'off' : ''} ${ev.canceled ? 'canceled' : ''}">
-        <div class="datebadge" aria-hidden="true">
-          <span class="dow">${d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}</span>
-          <span class="day">${d.getDate()}</span>
-          <span class="mon">${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</span>
-        </div>
+        ${dateBadge(d, ev)}
         <div class="body">
           ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
           ${ev.canceled ? '<span class="chip chip-canceled">Canceled</span>' : ev.replaces ? '<span class="chip chip-now">Changed</span>' : ''}
