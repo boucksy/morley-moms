@@ -467,3 +467,18 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .datebadge .dow { font-size: 0.7059rem; font-weight: 800; letter-spacing: .08em; }
 .datebadge .mon { opacity: .75; }
 .datebadge { height: 80px; width: 60px; gap: 2px; padding: 6px 0; box-sizing: border-box; }
+
+/* One-line descriptions with a caret to expand */
+.event .details-row { display: flex; align-items: flex-start; gap: 4px; margin-top: 2px; }
+.event .details-row .details { flex: 1; min-width: 0; margin: 0; }
+.event .details.clamp { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-line-clamp: unset; }
+.caret-btn { flex: none; width: 28px; height: 28px; margin: -3px 0 0; padding: 0; border: 0; background: transparent; color: var(--blue); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.caret-btn svg { transition: transform .15s; }
+.caret-btn.open svg { transform: rotate(180deg); }
+.details-row.fits .caret-btn { display: none; }
+/* Date block: the earlier card rule was winning, so size it here */
+.event .datebadge { width: 56px; height: 72px; padding: 4px 0; box-sizing: border-box; gap: 1px; }
+.event .datebadge .dow { font-size: 0.6471rem; }
+.event .datebadge .day { font-size: 1.35rem; }
+/* Spelling Words button sits level with the title, vertically centered */
+.words-btn { top: 50%; bottom: auto; transform: translateY(-50%); }

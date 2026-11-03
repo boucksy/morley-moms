@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 44;
+  const APP_VERSION = 45;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -479,7 +479,15 @@
     if (state.tab === 'spelling') { view.innerHTML = spellingView(); loadPhotos(); }
     if (state.tab === 'specials') view.innerHTML = specialsView();
     if (state.tab === 'members') view.innerHTML = membersView();
+    fitDetails();
     window.scrollTo(0, 0);
+  }
+  // Only keep the little caret where the one-line description is actually cut off.
+  function fitDetails() {
+    document.querySelectorAll('.details-row').forEach((row) => {
+      const p = row.querySelector('.details');
+      if (p.classList.contains('clamp') && p.scrollWidth <= p.clientWidth + 1) { row.classList.add('fits'); p.removeAttribute('data-action'); }
+    });
   }
 
   /* ---------------- events ---------------- */
@@ -625,7 +633,7 @@
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
-          ${ev.details ? `<p class="details ${ev.details.length > 150 ? 'clamp' : ''}" data-details>${linkify(ev.details)}</p>${ev.details.length > 150 ? `<button class="link-btn more-btn" data-action="toggle-details">Show more</button>` : ''}` : ''}
+          ${ev.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(ev.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
           ${ev.category === 'homework' && !ev._spell ? `<button class="turnin ${isDone(ev) ? 'on' : ''}" data-action="hw-done" data-id="${esc(ev.id)}" aria-pressed="${isDone(ev)}"><span class="box" aria-hidden="true">${isDone(ev) ? '✓' : ''}</span>${isDone(ev) ? 'Turned in' : 'Mark turned in'}</button>` : ''}
           <div class="card-tools">
             ${cleanLink(ev.link) ? `<a class="icon-btn icon-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer" aria-label="${esc((ev.link_label || 'Open link') + ' (' + linkHost(cleanLink(ev.link)) + ')')}" title="${esc((ev.link_label || 'Open link') + ' · ' + linkHost(cleanLink(ev.link)))}">${ICON.link}</a>` : ''}
@@ -752,6 +760,7 @@
           <label class="field"><span>From <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
           <label class="field"><span>To <small>(optional)</small></span><input class="input" type="time" name="end_time" value="${esc(p.end_time || '')}"></label>
         </div>
+        <button type="button" class="link-btn" data-action="clear-times" style="margin:-4px 0 12px">Clear time</button>
         <div class="field" ${series ? 'hidden' : ''}><span>Repeats every week? <small>(optional)</small></span>
           <div class="seg">${['mon', 'tue', 'wed', 'thu', 'fri'].map((k) => `<label><input type="checkbox" name="repeat_days" value="${k}" ${reps.includes(k) ? 'checked' : ''}><span>${DOW_SHORT[k]}</span></label>`).join('')}</div>
           <label class="field until-field" style="margin:10px 0 0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
@@ -1747,7 +1756,16 @@
         if (ev) { await cancelOneDay(ev, el.dataset.occ); closeSheet(); toast('Canceled for that day'); await refresh(); }
       }
       else if (a === 'toggle-details') {
-        const p = el.previousElementSibling; if (p) { const open = p.classList.toggle('clamp') === false; el.textContent = open ? 'Show less' : 'Show more'; }
+        if (e.target.closest('a')) return;
+        const row = el.closest('.details-row');
+        if (row) {
+          const p = row.querySelector('.details'); const b = row.querySelector('.caret-btn');
+          const open = p.classList.toggle('clamp') === false;
+          b.classList.toggle('open', open); b.setAttribute('aria-expanded', String(open)); b.setAttribute('aria-label', open ? 'Show less' : 'Show more');
+        }
+      }
+      else if (a === 'clear-times') {
+        document.querySelectorAll('#sheetForm input[name=time], #sheetForm input[name=end_time]').forEach((i) => { i.value = ''; });
       }
       else if (a === 'see-spelling') { state.tab = 'spelling'; renderTabs(); renderView(); }
       else if (a === 'edit-spell') addSpellingSheet({}, null, el.dataset.id);
