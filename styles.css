@@ -554,3 +554,12 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .frow .icon-btn[disabled] { opacity: .3; }
 .pin-btn { min-width: 72px; padding: 9px 10px; border: 2px solid var(--line); border-radius: 12px; background: transparent; color: var(--ink-2); font: inherit; font-weight: 800; font-size: .85rem; cursor: pointer; }
 .pin-btn.on { background: var(--yellow); border-color: var(--yellow); color: #10131C; }
+
+/* Dark mode: text on yellow fills must stay dark */
+@media (prefers-color-scheme: dark) {
+  .btn-yellow, .demo-banner, .chip-volunteer, .chip-now, .sp-num, .sp-today, .logo-mark, .tab.on .pill,
+  .sp-day:first-child, .sp-day:first-child * { color: #10131C; }
+  .sp-day:first-child .hint, .sp-day:first-child small { color: #3B3000; }
+}
+
+@media (prefers-color-scheme: dark) { .sp-ask-btns.light .sp-num.on { color: #fff; } }
