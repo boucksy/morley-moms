@@ -466,3 +466,4 @@ html, body, button, a, input, select, textarea, label { touch-action: manipulati
 .datebadge { height: 70px; gap: 1px; }
 .datebadge .dow { font-size: 0.7059rem; font-weight: 800; letter-spacing: .08em; }
 .datebadge .mon { opacity: .75; }
+.datebadge { height: 80px; width: 60px; gap: 2px; padding: 6px 0; box-sizing: border-box; }
