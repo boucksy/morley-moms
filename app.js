@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 64;
+  const APP_VERSION = 65;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -556,7 +556,7 @@
       const end = lastDayOf(ev);
       if (end > localDay(ev.starts_at)) return `${fmtDay(s)} – ${fmtDay(end)}`;
       // Days off and school days are truly all day; anything else just has no time yet.
-      return ['noschool', 'school'].includes(ev.category) ? 'All day' : 'Time TBD';
+      return ['noschool', 'school'].includes(ev.category) ? '' : 'Time TBD';
     }
     return timeRange(ev);
   }
@@ -645,7 +645,7 @@
           ${happeningNow && lastDayOf(ev) > localDay(ev.starts_at) ? '<span class="chip chip-now">Happening now</span>' : ''}
           ${ev.canceled ? '<span class="chip chip-canceled">Canceled</span>' : ev.replaces ? '<span class="chip chip-now">Changed</span>' : ''}
           <h3>${esc(ev.category === 'rides' ? rideTitle(ev.title) : ev.title)}</h3>
-          ${ev.category === 'rides' ? '' : `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>`}
+          ${ev.category === 'rides' || !whenText(ev) ? '' : `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>`}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
