@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 66;
+  const APP_VERSION = 67;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -817,7 +817,7 @@
         <div class="field"><span>Type</span>
           <div class="seg">${CATS.map((c) => `<label><input type="radio" name="category" value="${c.id}" ${c.id === cat ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
         </div>
-        ${classPicker(p.classroom_id !== undefined ? p.classroom_id : (getMyClass() || ''))}
+        ${classPicker(p.classroom_id !== undefined ? p.classroom_id : '')}
         <div class="row2">
           <label class="field ${p._filled && !p.date ? 'needs' : ''}"><span id="dateLabel">${reps.length ? 'Starts' : (cat === 'homework' ? 'Due date' : 'Date')}</span><input class="input" type="date" name="date" required value="${esc(p.date || (p._filled ? '' : isoDate(new Date())))}"></label>
           <label class="field"><span>Last day <small>(optional)</small></span><input class="input" type="date" name="end_date" value="${esc(p.end_date || '')}"></label>
@@ -1026,7 +1026,7 @@
       <form id="sheetForm">
         <label class="field ${p._filled && !p.test_date ? 'needs' : ''}"><span>Test day</span><input class="input" type="date" name="test_date" required value="${esc(p.test_date || '')}">
           ${p._filled && !p.test_date ? '' : ''}</label>
-        ${classPicker(p.classroom_id !== undefined ? p.classroom_id : (getMyClass() || ''))}
+        ${classPicker(p.classroom_id !== undefined ? p.classroom_id : '')}
         <label class="field"><span>Unit / pattern <small>(optional)</small></span><input class="input" name="title" maxlength="120" value="${esc(p.title || '')}" placeholder="e.g. Unit 5 — long e"></label>
         <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="Separated by commas or one per line">${esc(words)}</textarea></label>
         <label class="field"><span>Challenge words <small>(optional)</small></span><input class="input" name="challenge_words" maxlength="500" value="${esc(challenge)}" placeholder="e.g. neighbor, celebrate"></label>
