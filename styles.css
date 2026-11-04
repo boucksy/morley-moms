@@ -624,3 +624,16 @@ html { background: var(--bg); }
 @keyframes bootbounce { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-16px) rotate(4deg); } }
 @keyframes bootfloat { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-18px) rotate(8deg); } }
 @media (prefers-reduced-motion: reduce) { .boot-logo, .boot-float, .ptr-zone.spin .ptr-spin { animation: none; } }
+
+/* Fall splash */
+.boot.fall { background: linear-gradient(180deg, #B5471A 0%, #8A2F10 60%, #5E1F0A 100%); }
+.boot.fall .boot-float { display: none; }
+.boot .leaf { position: absolute; top: -12%; opacity: .95; animation: leaffall 7s linear infinite; pointer-events: none; }
+@keyframes leaffall {
+  0% { transform: translateY(0) translateX(0) rotate(0deg); }
+  25% { transform: translateY(28vh) translateX(26px) rotate(90deg); }
+  50% { transform: translateY(58vh) translateX(-22px) rotate(200deg); }
+  75% { transform: translateY(88vh) translateX(24px) rotate(290deg); }
+  100% { transform: translateY(125vh) translateX(-10px) rotate(380deg); }
+}
+@media (prefers-reduced-motion: reduce) { .boot .leaf { animation: none; top: 20%; } }

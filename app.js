@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 68;
+  const APP_VERSION = 69;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1995,6 +1995,7 @@
   (async function init() {
     try {
       const s = await api.session();
+      if (window.__bootHold) await window.__bootHold;   // first-time seasonal splash stays up a moment
       if (s) await afterSignIn(); else renderSignIn();
     } catch {
       renderSignIn('Couldn\u2019t reach the server. Check your connection and try again.');
