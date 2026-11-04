@@ -20,7 +20,23 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="app"><div class="boot"><span class="logo-mark">M</span></div></div>
+  <div id="app"><div class="boot">
+    <span class="boot-float f1">✏️</span><span class="boot-float f2">📚</span><span class="boot-float f3">🍎</span>
+    <span class="boot-float f4">⭐</span><span class="boot-float f5">🎒</span><span class="boot-float f6">🖍️</span>
+    <div class="boot-center"><span class="logo-mark boot-logo">M</span><p class="boot-title">Morley Moms</p><p class="boot-msg" id="bootMsg">Sharpening pencils…</p></div>
+  </div></div>
+  <script>
+    (function () {
+      var msgs = ['Sharpening pencils…', 'Packing backpacks…', 'Counting the days…', 'Finding the book fair…', 'Checking the lunch line…', 'Hunting for lost mittens…', 'Alphabetizing spelling words…'];
+      var i = Math.floor(Math.random() * msgs.length);
+      var el = document.getElementById('bootMsg'); if (!el) return;
+      el.textContent = msgs[i];
+      var t = setInterval(function () {
+        var m = document.getElementById('bootMsg'); if (!m) { clearInterval(t); return; }
+        i = (i + 1) % msgs.length; m.textContent = msgs[i];
+      }, 1300);
+    })();
+  </script>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>

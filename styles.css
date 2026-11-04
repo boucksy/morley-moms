@@ -601,3 +601,26 @@ html { background: var(--bg); }
 
 .qa-manual-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
 .qa-manual-row .btn { width: 100%; padding-left: 4px; padding-right: 4px; }
+
+/* Pull-to-refresh celebration */
+.ptr-party { position: absolute; left: 50%; top: calc((100% + var(--safe, 0px)) / 2); font-size: 30px; line-height: 1; transform: translate(-50%, -50%) scale(0); opacity: 0; pointer-events: none; }
+.ptr-zone.done .ptr-spin { opacity: 0; animation: none; }
+.ptr-zone.done .ptr-party { animation: partypop .55s cubic-bezier(.2,1.6,.4,1) forwards; }
+@keyframes partypop { 0% { transform: translate(-50%, -50%) scale(0) rotate(-25deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; } }
+
+/* Fun loading screen */
+.boot { position: relative; overflow: hidden; }
+.boot-center { text-align: center; color: #fff; z-index: 1; }
+.boot-logo { width: 84px; height: 84px; border-radius: 26px; font-size: 2rem; box-shadow: 0 8px 0 rgba(0,0,0,.18); animation: bootbounce 1s ease-in-out infinite; }
+.boot-title { font-family: var(--display, "Fredoka", system-ui, sans-serif); font-weight: 700; font-size: 1.7rem; margin: 22px 0 6px; letter-spacing: -.3px; }
+.boot-msg { font-weight: 700; opacity: .85; min-height: 1.4em; margin: 0; }
+.boot-float { position: absolute; font-size: 28px; opacity: .9; animation: bootfloat 6s ease-in-out infinite; }
+.boot-float.f1 { left: 12%; top: 18%; animation-delay: 0s; }
+.boot-float.f2 { right: 14%; top: 14%; animation-delay: -1.2s; }
+.boot-float.f3 { left: 18%; bottom: 20%; animation-delay: -2.4s; }
+.boot-float.f4 { right: 20%; bottom: 24%; animation-delay: -3.1s; }
+.boot-float.f5 { left: 46%; top: 8%; animation-delay: -4s; }
+.boot-float.f6 { right: 40%; bottom: 10%; animation-delay: -5s; }
+@keyframes bootbounce { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-16px) rotate(4deg); } }
+@keyframes bootfloat { 0%, 100% { transform: translateY(0) rotate(-8deg); } 50% { transform: translateY(-18px) rotate(8deg); } }
+@media (prefers-reduced-motion: reduce) { .boot-logo, .boot-float, .ptr-zone.spin .ptr-spin { animation: none; } }

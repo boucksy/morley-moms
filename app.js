@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 67;
+  const APP_VERSION = 68;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -434,7 +434,7 @@
   function renderShell() {
     $('#app').innerHTML = `
       <div class="shell">
-        <div class="ptr-zone" aria-hidden="true"><span class="ptr-spin"></span></div>
+        <div class="ptr-zone" aria-hidden="true"><span class="ptr-spin"></span><span class="ptr-party">\uD83C\uDF89</span></div>
         <header class="topbar">
           <span class="logo-mark">M</span>
           <h1>Morley Moms</h1>
@@ -1840,7 +1840,9 @@
         const t0 = Date.now();
         try { await refresh(); } catch {}
         const wait = 600 - (Date.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-        if (z) z.classList.remove('spin');
+        if (z) { z.classList.remove('spin'); z.classList.add('done'); }
+        await new Promise((r) => setTimeout(r, 750));       // 🎉 moment
+        if (z) z.classList.remove('done');
         setH(0, true); busy = false;
       } else setH(0, true);
       pull = 0;
