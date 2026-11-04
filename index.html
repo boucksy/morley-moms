@@ -25,14 +25,23 @@
   </div></div>
   <script>
     (function () {
-      // Seasonal splash. Everyone sees it once per theme; bump SPLASH_ID to show a new one (or add ?splash to the link to preview it).
-      var SPLASH_ID = 'fall-2026', HOLD_MS = 2400;
-      var seen = false;
-      try { seen = localStorage.getItem('mm.splashSeen') === SPLASH_ID; } catch (e) {}
+      // Seasonal splash. Each phone sees it for its first 3 opens of a theme (it is only counted once it has
+      // fully played, so a background refresh can't use it up). Bump SPLASH_ID for a new theme, or add ?splash to preview.
+      var SPLASH_ID = 'fall-2026', HOLD_MS = 2600, SHOWS = 3;
+      var KEY = 'mm.splash', n = 0;
+      try { var raw = (localStorage.getItem(KEY) || '').split(':'); if (raw[0] === SPLASH_ID) n = parseInt(raw[1], 10) || 0; } catch (e) {}
       var force = /[?&]splash\b/.test(location.search);
-      if (!seen || force) {
-        window.__bootHold = new Promise(function (r) { setTimeout(r, HOLD_MS); });
-        try { localStorage.setItem('mm.splashSeen', SPLASH_ID); } catch (e) {}
+      if (n < SHOWS || force) {
+        window.__bootHold = new Promise(function (resolve) {
+          function start() {
+            setTimeout(function () {
+              try { localStorage.setItem(KEY, SPLASH_ID + ':' + (n + 1)); } catch (e) {}
+              resolve();
+            }, HOLD_MS);
+          }
+          if (document.visibilityState === 'visible') start();
+          else document.addEventListener('visibilitychange', function f() { if (document.visibilityState === 'visible') { document.removeEventListener('visibilitychange', f); start(); } });
+        });
       }
       var boot = document.querySelector('.boot'); if (!boot) return;
       var leaves = ['🍂', '🍁', '🍂', '🍁', '🍃', '🌰', '🎃', '🍂', '🍁', '🍂', '🦃', '🍁'];
