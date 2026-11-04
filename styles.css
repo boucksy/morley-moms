@@ -598,3 +598,6 @@ html { background: var(--bg); }
 .event:has(.body > h3:first-child + .card-tools:last-child) .body { padding-right: 40px; }
 .event:has(.body > h3:first-child + .card-tools:last-child) .body h3 { margin: 0; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .event:has(.body > h3:first-child + .card-tools:last-child) .card-tools { top: 50%; transform: translateY(-50%); }
+
+.qa-manual-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 4px; }
+.qa-manual-row .btn { width: 100%; padding-left: 4px; padding-right: 4px; }

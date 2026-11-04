@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 65;
+  const APP_VERSION = 66;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1361,6 +1361,12 @@
         <input type="file" id="qaPhoto" accept="image/*" hidden>
       </label>
       <div id="qaBusy" class="qa-busy" hidden><div class="bar"><span></span></div><p>Reading the paper…</p></div>
+      <div class="qa-or"><span>or type it in yourself</span></div>
+      <div class="qa-manual-row">
+        <button type="button" class="btn btn-ghost" data-action="manual-event">Event</button>
+        <button type="button" class="btn btn-ghost" data-action="manual-spelling">Spelling</button>
+        <button type="button" class="btn btn-ghost" data-action="manual-specials">Specials</button>
+      </div>
       <div class="qa-examples">
         <p class="words-label">Try saying</p>
         <p>“Spelling test Thursday the 12th. Words are rain, play, gate, train. Challenge words neighbor and celebrate.”</p>
@@ -1368,11 +1374,7 @@
         <p>“Ms. Carey: day 1 art, day 2 gym, day 3 music, day 4 library.”</p>
         <p>“Today is day 3.”</p>
       </div>
-      <div class="qa-manual">Or fill it in:
-        <button type="button" class="link-btn inline" data-action="manual-event">Event</button> ·
-        <button type="button" class="link-btn inline" data-action="manual-spelling">Spelling</button> ·
-        <button type="button" class="link-btn inline" data-action="manual-specials">Specials</button>
-      </div>`);
+`);
     const photo = $('#qaPhoto');
     photo.addEventListener('change', () => { if (photo.files && photo.files[0]) readPhoto(photo.files[0]); });
   }
