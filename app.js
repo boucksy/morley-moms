@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 71;
+  const APP_VERSION = 72;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -490,14 +490,14 @@
       { id: 'spelling', label: 'Spelling', icon: ICON.book },
       { id: 'plans', label: 'Plans', icon: ICON.bulb },
       { id: 'specials', label: 'Specials', icon: ICON.star },
-      { id: 'members', label: 'Members', icon: ICON.users },
+      { id: 'links', label: 'Links', icon: ICON.link },
     ];
     $('#tabbar').innerHTML = tabs.map((t) => `
-      <button class="tab ${state.tab === t.id ? 'on' : ''}" data-action="tab" data-tab="${t.id}" aria-current="${state.tab === t.id ? 'page' : 'false'}">
+      <button class="tab ${state.tab === t.id || (t.id === 'links' && state.tab === 'members') ? 'on' : ''}" data-action="tab" data-tab="${t.id}" aria-current="${state.tab === t.id ? 'page' : 'false'}">
         <span class="pill">${t.icon}</span>${t.label}
       </button>`).join('');
     const fab = $('.fab');
-    if (fab) fab.style.display = state.tab === 'members' && !state.me.is_admin ? 'none' : '';
+    if (fab) fab.style.display = state.tab === 'links' || (state.tab === 'members' && !state.me.is_admin) ? 'none' : '';
   }
 
   async function refresh() {
@@ -521,6 +521,7 @@
     if (state.tab === 'spelling') { view.innerHTML = spellingView(); loadPhotos(); }
     if (state.tab === 'plans') view.innerHTML = plansView();
     if (state.tab === 'specials') view.innerHTML = specialsView();
+    if (state.tab === 'links') view.innerHTML = linksView();
     if (state.tab === 'members') view.innerHTML = membersView();
     fitDetails();
     updateClassSlot();
@@ -1824,9 +1825,43 @@
   }
 
   /* ---------------- members ---------------- */
+  // Quick links to the school sites everyone keeps needing.
+  const QUICK_LINKS = [
+    { group: 'Lunch', items: [
+      { icon: '\uD83C\uDF4E', title: 'Lunch menu', note: 'MealViewer', url: 'https://schools.mealviewer.com/school/MorleyElementary' },
+      { icon: '\uD83D\uDCB3', title: 'MySchoolBucks', note: 'Lunch money login', url: 'https://www.myschoolbucks.com/' },
+    ] },
+    { group: 'School calendars', items: [
+      { icon: '\uD83D\uDCC5', title: '2026\u201327 LPS student calendar', note: 'Google Drive', url: 'https://drive.google.com/file/d/1VUhuFFjwMG-W8uQ1YlsR4JpVqQv37NR8/view' },
+      { icon: '\uD83D\uDCC5', title: '2027\u201328 LPS student calendar', note: 'Google Drive', url: 'https://drive.google.com/file/d/1r5UjTY5ROljnnShdZr6DHRdwM3-Rq1TV/view' },
+    ] },
+    { group: 'Grades & attendance', items: [
+      { icon: '\uD83C\uDF93', title: 'ParentVUE', note: 'LPS parent login', url: 'https://synergyvue.lps.org/PXP2_Login_Parent.aspx?regenerateSessionId=true' },
+    ] },
+  ];
+  function linksView() {
+    return `
+      <div class="page-head"><div><h2>Links</h2></div></div>
+      ${QUICK_LINKS.map((g) => `
+        <p class="section-label">${esc(g.group)}</p>
+        ${g.items.map((l) => `
+          <a class="card linkrow" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+            <span class="linkrow-icon" aria-hidden="true">${l.icon}</span>
+            <span class="linkrow-text"><strong>${esc(l.title)}</strong><small>${esc(l.note)}</small></span>
+            <span class="linkrow-go" aria-hidden="true">${ICON.link}</span>
+          </a>`).join('')}`).join('')}
+      <p class="section-label">The group</p>
+      <button class="card linkrow" data-action="tab" data-tab="members" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
+        <span class="linkrow-icon" aria-hidden="true">\uD83D\uDC6D</span>
+        <span class="linkrow-text"><strong>Group members</strong><small>${state.members.length} moms${state.me && state.me.is_admin ? ' \u00B7 add or remove' : ''}</small></span>
+        <span class="linkrow-go" aria-hidden="true">\u203A</span>
+      </button>`;
+  }
+
   function membersView() {
     const admin = state.me.is_admin;
     return `
+      <button class="link-btn" data-action="tab" data-tab="links" style="margin:0 0 8px">\u2039 Links</button>
       <div class="page-head"><div><h2>Members</h2><p>${state.members.length} members</p></div></div>
       ${admin ? `` : ''}
       <div class="card" style="padding:4px 16px">
@@ -2035,7 +2070,7 @@
       else if (a === 'add') {
         if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
         else if (state.tab === 'plans') planSheet();
-        else if (state.tab !== 'members') quickAddSheet();
+        else if (state.tab !== 'members' && state.tab !== 'links') quickAddSheet();
       }
       else if (a === 'account') accountSheet();
       else if (a === 'close-sheet') { stopMic(); closeSheet(); }

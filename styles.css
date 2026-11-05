@@ -655,3 +655,12 @@ html { background: var(--bg); }
 .plan-tools { display: flex; gap: 6px; }
 .plan-tools .icon-btn { position: static; }
 .plan .details-row { margin-top: 6px; }
+
+/* Quick links */
+.linkrow { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 8px; text-decoration: none; color: inherit; }
+.linkrow-icon { font-size: 1.7rem; width: 44px; height: 44px; flex: none; display: grid; place-items: center; background: var(--blue-soft); border-radius: 12px; }
+.linkrow-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.linkrow-text strong { font-size: 1rem; font-weight: 800; }
+.linkrow-text small { color: var(--ink-2); font-size: .82rem; }
+.linkrow-go { flex: none; color: var(--blue); display: grid; place-items: center; font-size: 1.6rem; }
+.linkrow-go svg { width: 20px; height: 20px; }
