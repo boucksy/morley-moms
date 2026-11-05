@@ -637,3 +637,21 @@ html { background: var(--bg); }
   100% { transform: translateY(125vh) translateX(-10px) rotate(380deg); }
 }
 @media (prefers-reduced-motion: reduce) { .boot .leaf { animation: none; top: 20%; } }
+
+/* Who's going + Plans */
+.rsvp { margin-top: 10px; }
+.rsvp-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.rsvp-btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px 8px 9px; border: 2px solid var(--ink-3); border-radius: 12px; background: transparent; color: inherit; font: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; }
+.rsvp-btn .box { width: 20px; height: 20px; border: 2px solid currentColor; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; line-height: 1; }
+.rsvp-btn:not(:has(.box)) { padding-left: 12px; }
+.rsvp-btn.yes { background: #2e9e5b; border-color: #2e9e5b; color: #fff; }
+.rsvp-btn.yes .box { background: #fff; color: #2e9e5b; border-color: #fff; }
+.rsvp-btn.no { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.who-line { margin: 8px 0 0; font-size: .85rem; color: var(--ink-2); }
+.who-line strong { color: var(--ink); }
+.plan { position: relative; }
+.plan-head { display: flex; align-items: flex-start; gap: 8px; }
+.plan-head h3 { flex: 1; margin: 0 0 4px; font-size: 1.1rem; font-weight: 800; }
+.plan-tools { display: flex; gap: 6px; }
+.plan-tools .icon-btn { position: static; }
+.plan .details-row { margin-top: 6px; }

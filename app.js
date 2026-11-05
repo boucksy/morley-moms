@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 70;
+  const APP_VERSION = 71;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -42,6 +42,7 @@
   const ICON = {
     calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>',
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/></svg>',
+    bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>',
     users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.3-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.6c2.2.4 3.6 2 4 4.6"/></svg>',
     mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
     camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
@@ -78,6 +79,7 @@
         }),
       ],
       anchors: [],
+      going: [], plans: [], planResponses: [],
       classrooms: (window.MM_DEMO_CLASSES || []).map((name, i) => ({ id: `class${i}`, name, schedule: {}, notes: null, created_by: 'u-miranda', created_by_name: 'Miranda' })),
       spelling: (window.MM_DEMO_SPELLING || []).map((sp, i) => ({ id: `spell${i}`, title: null, notes: null, photo_path: null, ...sp, created_by: 'u-miranda', created_by_name: 'Miranda' })),
     };
@@ -104,6 +106,22 @@
       async addEvent(row) { db.events.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name }); return delay(); },
       async updateEvent(id, row) { Object.assign(db.events.find((e) => e.id === id), row); return delay(); },
       async deleteEvent(id) { db.events = db.events.filter((e) => e.id !== id); return delay(); },
+      async listGoing() { return delay(db.going.filter((g) => g.going || g.member_email === state.me.email.toLowerCase()).map((g) => ({ ...g }))); },
+      async setGoing(eventId, going, me) {
+        db.going = db.going.filter((g) => !(g.event_id === eventId && g.member_email === me.email));
+        if (going !== null) db.going.push({ event_id: eventId, member_email: me.email, member_name: me.name, going });
+        return delay();
+      },
+      async listPlans() { return delay(db.plans.map((p) => ({ ...p }))); },
+      async addPlan(row) { db.plans.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(); },
+      async updatePlan(id, row) { Object.assign(db.plans.find((p) => p.id === id), row); return delay(); },
+      async deletePlan(id) { db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
+      async listPlanResponses() { return delay(db.planResponses.map((r) => ({ ...r }))); },
+      async setPlanStatus(planId, status, me) {
+        db.planResponses = db.planResponses.filter((r) => !(r.plan_id === planId && r.member_email === me.email));
+        if (status) db.planResponses.push({ plan_id: planId, member_email: me.email, member_name: me.name, status });
+        return delay();
+      },
       async listSpelling() { return delay([...db.spelling].sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of))); },
       async addSpelling(row, file) {
         const photo_path = file ? URL.createObjectURL(file) : null;
@@ -167,6 +185,20 @@
       async addEvent(row) { ok(await sb.from('events').insert(row)); },
       async updateEvent(id, row) { ok(await sb.from('events').update(row).eq('id', id)); },
       async deleteEvent(id) { ok(await sb.from('events').delete().eq('id', id)); },
+      async listGoing() { return ok(await sb.from('event_going').select('*')); },
+      async setGoing(eventId, going, me) {
+        if (going === null) ok(await sb.from('event_going').delete().eq('event_id', eventId).eq('member_email', me.email));
+        else ok(await sb.from('event_going').upsert({ event_id: eventId, member_email: me.email, member_name: me.name, going }, { onConflict: 'event_id,member_email' }));
+      },
+      async listPlans() { return ok(await sb.from('plans').select('*').order('created_at', { ascending: false })); },
+      async addPlan(row) { ok(await sb.from('plans').insert(row)); },
+      async updatePlan(id, row) { ok(await sb.from('plans').update(row).eq('id', id)); },
+      async deletePlan(id) { ok(await sb.from('plans').delete().eq('id', id)); },
+      async listPlanResponses() { return ok(await sb.from('plan_responses').select('*')); },
+      async setPlanStatus(planId, status, me) {
+        if (!status) ok(await sb.from('plan_responses').delete().eq('plan_id', planId).eq('member_email', me.email));
+        else ok(await sb.from('plan_responses').upsert({ plan_id: planId, member_email: me.email, member_name: me.name, status }, { onConflict: 'plan_id,member_email' }));
+      },
       async listSpelling() { return ok(await sb.from('spelling_lists').select('*').order('test_date', { ascending: false, nullsFirst: false }).order('week_of', { ascending: false }).limit(30)); },
       async addSpelling(row, file) {
         if (file) {
@@ -264,6 +296,9 @@
     members: [],
     classrooms: [],
     anchors: [],
+    going: [],
+    plans: [],
+    planResponses: [],
     signin: { step: 'email', email: '' },
   };
   const CATS = [
@@ -453,6 +488,7 @@
     const tabs = [
       { id: 'events', label: 'Events', icon: ICON.calendar },
       { id: 'spelling', label: 'Spelling', icon: ICON.book },
+      { id: 'plans', label: 'Plans', icon: ICON.bulb },
       { id: 'specials', label: 'Specials', icon: ICON.star },
       { id: 'members', label: 'Members', icon: ICON.users },
     ];
@@ -466,8 +502,12 @@
 
   async function refresh() {
     try {
-      const [events, spelling, members, classrooms, anchors] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors()]);
+      const soft = (p) => p.catch(() => null);   // new tables may not exist until add-plans.sql has been run
+      const [events, spelling, members, classrooms, anchors, going, plans, planResponses] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses())]);
       Object.assign(state, { events, spelling, members, classrooms, anchors });
+      if (going) state.going = going;
+      if (plans) state.plans = plans;
+      if (planResponses) state.planResponses = planResponses;
     } catch (ex) {
       toast('Couldn\u2019t load the latest. Check your connection.');
     }
@@ -479,6 +519,7 @@
     if (!view) return;
     if (state.tab === 'events') view.innerHTML = eventsView();
     if (state.tab === 'spelling') { view.innerHTML = spellingView(); loadPhotos(); }
+    if (state.tab === 'plans') view.innerHTML = plansView();
     if (state.tab === 'specials') view.innerHTML = specialsView();
     if (state.tab === 'members') view.innerHTML = membersView();
     fitDetails();
@@ -650,6 +691,7 @@
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(ev.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
+          ${ev.ask_going && !ev._occ && !ev._spell ? goingBlock(ev) : ''}
           ${ev.category === 'homework' && !ev._spell ? `<button class="turnin ${isDone(ev) ? 'on' : ''}" data-action="hw-done" data-id="${esc(ev.id)}" aria-pressed="${isDone(ev)}"><span class="box" aria-hidden="true">${isDone(ev) ? '✓' : ''}</span>${isDone(ev) ? 'Turned in' : 'Mark turned in'}</button>` : ''}
           <div class="card-tools">
             ${cleanLink(ev.link) ? `<a class="icon-btn icon-link" href="${esc(cleanLink(ev.link))}" target="_blank" rel="noopener noreferrer" aria-label="${esc((ev.link_label || 'Open link') + ' (' + linkHost(cleanLink(ev.link)) + ')')}" title="${esc((ev.link_label || 'Open link') + ' · ' + linkHost(cleanLink(ev.link)))}">${ICON.link}</a>` : ''}
@@ -690,6 +732,97 @@
     if (diff === 0) return `This week · ${range}`;
     if (diff === 1) return `Next week · ${range}`;
     return `Week of ${range}`;
+  }
+
+  // ---- who's going (events) and plans ----
+  const myEmail = () => (state.me && state.me.email ? state.me.email.toLowerCase() : '');
+  const myName = () => (state.me && (state.me.display_name || state.me.email)) || '';
+  const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || 'Someone';
+  const goingFor = (eventId) => state.going.filter((g) => g.event_id === eventId && g.going);
+  const myGoing = (eventId) => { const g = state.going.find((x) => x.event_id === eventId && x.member_email === myEmail()); return g ? g.going : null; };
+  function goingBlock(ev) {
+    const yes = goingFor(ev.id), mine = myGoing(ev.id);
+    const names = yes.map((g) => firstName(g.member_name)).sort((a, b) => a.localeCompare(b));
+    return `<div class="rsvp">
+      <div class="rsvp-btns">
+        <button class="rsvp-btn ${mine === true ? 'yes' : ''}" data-action="going" data-id="${esc(ev.id)}" data-val="yes" aria-pressed="${mine === true}"><span class="box" aria-hidden="true">${mine === true ? '✓' : ''}</span>I’m going</button>
+        <button class="rsvp-btn ${mine === false ? 'no' : ''}" data-action="going" data-id="${esc(ev.id)}" data-val="no" aria-pressed="${mine === false}">Can’t make it</button>
+      </div>
+      <p class="who-line">${names.length ? `<strong>Going (${names.length}):</strong> ${esc(names.join(', '))}` : 'No one has said yes yet'}</p>
+    </div>`;
+  }
+  async function setGoingFor(eventId, val) {
+    const cur = myGoing(eventId);
+    const next = val === 'yes' ? (cur === true ? null : true) : (cur === false ? null : false);
+    state.going = state.going.filter((g) => !(g.event_id === eventId && g.member_email === myEmail()));
+    if (next !== null) state.going.push({ event_id: eventId, member_email: myEmail(), member_name: myName(), going: next });
+    keepScroll(renderView);
+    try { await api.setGoing(eventId, next, { email: myEmail(), name: myName() }); }
+    catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
+  }
+  function keepScroll(fn) { const y = window.scrollY; fn(); window.scrollTo(0, y); }
+
+  const respFor = (planId, status) => state.planResponses.filter((r) => r.plan_id === planId && r.status === status);
+  const myResp = (planId) => { const r = state.planResponses.find((x) => x.plan_id === planId && x.member_email === myEmail()); return r ? r.status : null; };
+  async function setPlanStatusFor(planId, status) {
+    const cur = myResp(planId);
+    const next = cur === status ? null : status;
+    state.planResponses = state.planResponses.filter((r) => !(r.plan_id === planId && r.member_email === myEmail()));
+    if (next) state.planResponses.push({ plan_id: planId, member_email: myEmail(), member_name: myName(), status: next });
+    keepScroll(renderView);
+    try { await api.setPlanStatus(planId, next, { email: myEmail(), name: myName() }); }
+    catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
+  }
+  function planCard(p) {
+    const mine = myResp(p.id);
+    const interested = respFor(p.id, 'interested').map((r) => firstName(r.member_name)).sort();
+    const signed = respFor(p.id, 'signed_up').map((r) => firstName(r.member_name)).sort();
+    const link = cleanLink(p.link);
+    const when = p.plan_date ? fmtDay(parseDate(p.plan_date)) : '';
+    return `<article class="card plan">
+      <div class="plan-head">
+        <h3>${esc(p.title)}</h3>
+        <div class="plan-tools">
+          ${link ? `<a class="icon-btn icon-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="Open link (${esc(linkHost(link))})" title="${esc(linkHost(link))}">${ICON.link}</a>` : ''}
+          <button class="icon-btn" data-action="edit-plan" data-id="${esc(p.id)}" aria-label="Edit" title="Edit">${ICON.edit}</button>
+        </div>
+      </div>
+      ${when ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>${esc(when)}</span></p>` : ''}
+      ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
+      <div class="rsvp-btns" style="margin-top:10px">
+        <button class="rsvp-btn ${mine === 'interested' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="interested" aria-pressed="${mine === 'interested'}"><span class="box" aria-hidden="true">${mine === 'interested' ? '✓' : ''}</span>Interested</button>
+        <button class="rsvp-btn ${mine === 'signed_up' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="signed_up" aria-pressed="${mine === 'signed_up'}"><span class="box" aria-hidden="true">${mine === 'signed_up' ? '✓' : ''}</span>We signed up</button>
+      </div>
+      ${signed.length ? `<p class="who-line"><strong>Signed up (${signed.length}):</strong> ${esc(signed.join(', '))}</p>` : ''}
+      ${interested.length ? `<p class="who-line"><strong>Interested (${interested.length}):</strong> ${esc(interested.join(', '))}</p>` : ''}
+    </article>`;
+  }
+  function plansView() {
+    const list = [...state.plans].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    return `
+      <div class="page-head"><div><h2>Plans</h2></div></div>
+      <p class="sub" style="color:var(--ink-2);margin:-6px 0 14px">Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.</p>
+      ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans yet</p><p>Tap + to add something we might do together.</p></div>`}`;
+  }
+  function planSheet(editId) {
+    const p = editId ? state.plans.find((x) => String(x.id) === String(editId)) : null;
+    openSheet(`
+      <h2>${p ? 'Edit plan' : 'New plan'}</h2>
+      <form id="sheetForm">
+        <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p ? p.title : '')}" placeholder="e.g. YMCA Winter Academy"></label>
+        <label class="field"><span>Sign-up link <small>(optional)</small></span><input class="input" name="link" type="url" inputmode="url" autocapitalize="off" maxlength="500" value="${esc(p && p.link ? p.link : '')}" placeholder="https://…"></label>
+        <label class="field"><span>Date <small>(optional)</small></span><input class="input" type="date" name="plan_date" value="${esc(p && p.plan_date ? p.plan_date : '')}"></label>
+        <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="Cost, dates, what the girls would do…">${esc(p && p.details ? p.details : '')}</textarea></label>
+        <div class="sheet-actions">
+          <button class="btn btn-primary" type="submit">${p ? 'Save changes' : 'Add plan'}</button>
+          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${p ? `<button class="btn btn-danger" type="button" data-action="del-plan" data-id="${esc(p.id)}">Delete</button>` : ''}
+        </div>
+      </form>`, async (fd) => {
+      const row = { title: fd.get('title').trim(), link: cleanLink(fd.get('link')) || null, plan_date: fd.get('plan_date') || null, details: fd.get('details').trim() || null };
+      if (p) await api.updatePlan(p.id, row); else await api.addPlan(row);
+      state.tab = 'plans'; toast(p ? 'Plan updated' : 'Plan added');
+    });
   }
 
   // ---- filter pills: pin up to 3, everything else lives in the ⋯ menu, in the order each mom picks ----
@@ -792,7 +925,7 @@
     const s = new Date(ev.starts_at);
     const hhmm = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
     return {
-      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details, link: ev.link || '', link_label: ev.link_label || '', classroom_id: ev.classroom_id || '',
+      title: ev.title, category: ev.category, location: ev.location, pickup_dropoff: ev.pickup_dropoff, details: ev.details, link: ev.link || '', link_label: ev.link_label || '', ask_going: !!ev.ask_going, classroom_id: ev.classroom_id || '',
       date: isoDate(s),
       time: ev.all_day ? '' : hhmm(s),
       end_time: !ev.all_day && ev.ends_at ? hhmm(new Date(ev.ends_at)) : '',
@@ -834,6 +967,7 @@
         <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. Morley Library"></label>
         <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
         <div class="row2">
+        <label class="check-row" style="display:flex;gap:10px;align-items:center;margin:0 0 12px"><input type="checkbox" name="ask_going" ${p.ask_going ? 'checked' : ''}><span><strong>Ask who’s going</strong> <small style="color:var(--ink-2)">(moms tap I’m going; only yeses are shown)</small></span></label>
           <label class="field"><span>Link <small>(optional)</small></span><input class="input" name="link" type="url" inputmode="url" autocapitalize="off" maxlength="500" value="${esc(p.link || '')}" placeholder="https://…"></label>
           <label class="field"><span>Button says <small>(optional)</small></span><input class="input" name="link_label" maxlength="30" value="${esc(p.link_label || '')}" placeholder="e.g. Donate"></label>
         </div>
@@ -864,6 +998,7 @@
         repeat_days: repeatDays.length ? repeatDays : null,
         repeat_until: repeatDays.length ? fd.get('repeat_until') : null,
         location: fd.get('location').trim() || null,
+        ask_going: fd.get('ask_going') === 'on',
         pickup_dropoff: fd.get('pickup_dropoff').trim() || null,
         details: fd.get('details').trim() || null,
         classroom_id: fd.get('classroom_id') || null,
@@ -1884,6 +2019,10 @@
     try {
       if (a === 'tab') { state.tab = el.dataset.tab; renderTabs(); renderView(); }
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
+      else if (a === 'going') await setGoingFor(el.dataset.id, el.dataset.val);
+      else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
+      else if (a === 'edit-plan') planSheet(el.dataset.id);
+      else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
       else if (a === 'filter-menu') filterSheet();
       else if (a === 'hidden-cards') hiddenSheet();
       else if (a === 'unhide') { unhideCard(el.dataset.id); hiddenSheet(); renderView(); }
@@ -1895,6 +2034,7 @@
       else if (a === 'toggle-past') { state.showPast = !state.showPast; renderView(); }
       else if (a === 'add') {
         if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
+        else if (state.tab === 'plans') planSheet();
         else if (state.tab !== 'members') quickAddSheet();
       }
       else if (a === 'account') accountSheet();
