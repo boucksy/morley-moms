@@ -668,3 +668,9 @@ html { background: var(--bg); }
 .rsvp-btn { flex: 0 1 auto; padding: 7px 10px 7px 8px; font-size: .82rem; gap: 6px; white-space: nowrap; }
 .event .rsvp { margin-right: -44px; }
 .event .rsvp .who-line { margin-right: 44px; }
+
+/* What's new */
+.changes { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.changes li { display: flex; gap: 12px; align-items: flex-start; font-weight: 700; line-height: 1.3; }
+.changes .ci { font-size: 1.15rem; width: 28px; text-align: center; flex: none; }
+.changes small { color: var(--ink-2); font-weight: 600; }

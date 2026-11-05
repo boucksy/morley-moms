@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 73;
+  const APP_VERSION = 74;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -419,7 +419,7 @@
     state.me = await api.me();
     if (!state.me) { renderNotMember(); return; }
     renderShell();
-    await refresh();
+    await refresh({ announce: true });
     maybeCleanup();
     maybeInstallSheet();
     if (sharedText) {
@@ -446,7 +446,7 @@
   // time the link has ?install=1 (the welcome email uses that link).
   let installShown = false;
   function maybeInstallSheet() {
-    if (isStandalone() || sharedText || installShown) return;
+    if (isStandalone() || sharedText || installShown || document.querySelector('.sheet-backdrop')) return;
     installShown = true;
     const forced = /[?&]install=1/.test(location.search);
     let seen = false;
@@ -500,7 +500,111 @@
     if (fab) fab.style.display = state.tab === 'links' || (state.tab === 'members' && !state.me.is_admin) ? 'none' : '';
   }
 
-  async function refresh() {
+  // ---- "What's new" sheet: shows what other moms changed since this phone last said OK ----
+  const SEEN_KEY = 'mm.seen';
+  const sigHash = (o) => { const t = JSON.stringify(o === undefined ? null : o); let x = 5381; for (let i = 0; i < t.length; i++) x = ((x << 5) + x + t.charCodeAt(i)) | 0; return String(x); };
+  const readSeen = () => { try { const v = JSON.parse(localStorage.getItem(SEEN_KEY)); return v && v.v === 1 ? v : null; } catch { return null; } };
+  const writeSeen = (v) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(v)); } catch {} };
+  const evRec = (e) => [e.title, e.starts_at, e.canceled ? 1 : 0, e.location || '', sigHash(e.details || ''), sigHash([e.ends_at, e.all_day, e.category, e.repeat_days, e.repeat_until, e.classroom_id, e.link])];
+  const spRec = (x) => [x.test_date || '', x.title || '', sigHash([x.words, x.challenge_words, x.classroom_id])];
+  const plRec = (p) => [p.title, sigHash([p.details, p.link, p.plan_date])];
+  const clRec = (c) => [c.name, sigHash([c.schedule, c.notes])];
+  const RECS = { ev: evRec, sp: spRec, pl: plRec, cl: clRec };
+  const LISTS = { ev: () => state.events, sp: () => state.spelling, pl: () => state.plans, cl: () => state.classrooms };
+  function buildSnapshot() {
+    const o = { v: 1, ev: {}, sp: {}, pl: {}, cl: {}, go: {}, pr: {} };
+    Object.keys(RECS).forEach((k) => LISTS[k]().forEach((x) => { o[k][x.id] = RECS[k](x); }));
+    state.going.forEach((g) => { if (g.going) o.go[g.event_id + '|' + g.member_email] = 1; });
+    state.planResponses.forEach((r) => { o.pr[r.plan_id + '|' + r.member_email] = r.status; });
+    return o;
+  }
+  // Things I changed myself shouldn't be announced back to me.
+  const mineTouched = { ev: new Set(), sp: new Set(), pl: new Set(), cl: new Set() };
+  [['updateEvent', 'ev', 0], ['deleteEvent', 'ev', 0], ['updateSpelling', 'sp', 0], ['deleteSpelling', 'sp', 'row'], ['updatePlan', 'pl', 0], ['deletePlan', 'pl', 0], ['saveClassroom', 'cl', 1], ['deleteClassroom', 'cl', 0]].forEach(([fn, kind, at]) => {
+    const orig = api[fn]; if (!orig) return;
+    api[fn] = async function (...a) { const r = await orig.apply(this, a); const id = at === 'row' ? (a[0] && a[0].id) : a[at]; if (id) mineTouched[kind].add(String(id)); return r; };
+  });
+  function syncMine() {
+    const snap = readSeen(); let any = false;
+    Object.keys(mineTouched).forEach((k) => {
+      mineTouched[k].forEach((id) => {
+        any = true;
+        const item = LISTS[k]().find((x) => String(x.id) === id);
+        if (snap) { if (item) snap[k][id] = RECS[k](item); else delete snap[k][id]; }
+      });
+      mineTouched[k].clear();
+    });
+    if (snap && any) writeSeen(snap);
+  }
+  function whatChanged(snap) {
+    const lines = [], me = state.me, today = startOfToday(), mail = myEmail();
+    const mine = (x) => x.created_by && me && x.created_by === me.id;
+    const upcoming = (e) => (isRepeating(e) ? (!e.repeat_until || parseDate(e.repeat_until) >= today) : lastDayOf(e) >= today);
+    const names = (arr) => { const n = [...new Set(arr.map((r) => firstName(r.member_name)))].sort(); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0]; };
+    state.events.forEach((e) => {
+      if (!upcoming(e) || !forMe(e) || isHidden(e)) return;
+      const old = snap.ev[e.id];
+      if (!old) { if (!mine(e)) lines.push({ i: '➕', t: `${firstName(e.created_by_name)} added ${e.title}`, d: isRepeating(e) ? '' : fmtDay(localDay(e.starts_at)) }); return; }
+      const n = evRec(e); if (n.join('|') === old.join('|')) return;
+      const parts = [];
+      if (n[2] && !old[2]) parts.push('canceled');
+      if (n[1] !== old[1]) parts.push(fmtDay(localDay(n[1])) !== fmtDay(localDay(old[1])) ? `moved to ${fmtDay(localDay(n[1]))}` : 'time changed');
+      if (n[3] !== old[3]) parts.push('new location');
+      if (n[4] !== old[4]) parts.push('details updated');
+      if (n[0] !== old[0]) parts.push(`was “${old[0]}”`);
+      lines.push({ i: '✏️', t: `${e.title}${parts.length ? ': ' + parts.join(', ') : ' was updated'}` });
+    });
+    Object.keys(snap.ev).forEach((id) => {
+      if (state.events.some((e) => String(e.id) === id)) return;
+      const r = snap.ev[id]; if (r[1] && new Date(r[1]) >= today) lines.push({ i: '🗑️', t: `${r[0]} was removed` });
+    });
+    state.spelling.forEach((x) => {
+      if (!forMe(x)) return;
+      const old = snap.sp[x.id];
+      if (!old) { if (!mine(x) && (!x.test_date || parseDate(x.test_date) >= today)) lines.push({ i: '➕', t: 'New spelling list', d: x.test_date ? 'test ' + fmtDay(parseDate(x.test_date)) : '' }); return; }
+      if (spRec(x).join('|') !== old.join('|') && (!x.test_date || parseDate(x.test_date) >= today)) lines.push({ i: '✏️', t: 'A spelling list was updated', d: x.test_date ? 'test ' + fmtDay(parseDate(x.test_date)) : '' });
+    });
+    state.plans.forEach((p) => {
+      const old = snap.pl[p.id];
+      if (!old) { if (!mine(p)) lines.push({ i: '💡', t: `${firstName(p.created_by_name)} added a plan: ${p.title}` }); return; }
+      if (plRec(p).join('|') !== old.join('|')) lines.push({ i: '✏️', t: `Plan updated: ${p.title}` });
+    });
+    state.classrooms.forEach((c) => {
+      const old = snap.cl[c.id]; if (!old || clRec(c).join('|') === old.join('|')) return;
+      lines.push({ i: '⭐', t: `Specials updated for ${c.name}` });
+    });
+    const goBy = {};
+    state.going.forEach((g) => { if (g.going && g.member_email !== mail && !snap.go[g.event_id + '|' + g.member_email]) (goBy[g.event_id] = goBy[g.event_id] || []).push(g); });
+    Object.keys(goBy).forEach((id) => {
+      const e = state.events.find((x) => String(x.id) === id); if (!e || !upcoming(e)) return;
+      const arr = goBy[id]; lines.push({ i: '✅', t: `${names(arr)} ${arr.length === 1 ? 'is' : 'are'} going to ${e.title}` });
+    });
+    const prBy = {};
+    state.planResponses.forEach((r) => { if (r.member_email !== mail && snap.pr[r.plan_id + '|' + r.member_email] !== r.status) (prBy[r.plan_id + '|' + r.status] = prBy[r.plan_id + '|' + r.status] || []).push(r); });
+    Object.keys(prBy).forEach((k) => {
+      const [pid, st] = k.split('|'); const p = state.plans.find((x) => String(x.id) === pid); if (!p) return;
+      const arr = prBy[k];
+      lines.push({ i: st === 'signed_up' ? '🎉' : '👋', t: st === 'signed_up' ? `${names(arr)} signed up for ${p.title}` : `${names(arr)} ${arr.length === 1 ? 'is' : 'are'} interested in ${p.title}` });
+    });
+    return lines;
+  }
+  function maybeAnnounce() {
+    if (!state.me || document.querySelector('.sheet-backdrop')) return;
+    const snap = readSeen();
+    if (!snap) { writeSeen(buildSnapshot()); return; }       // first time on this phone: start from today
+    const lines = whatChanged(snap);
+    if (!lines.length) { writeSeen(buildSnapshot()); return; }
+    const shown = lines.slice(0, 14), more = lines.length - shown.length;
+    openSheet(`
+      <h2>What’s new</h2>
+      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Since you last checked</p>
+      <ul class="changes">${shown.map((l) => `<li><span class="ci" aria-hidden="true">${l.i}</span><span>${esc(l.t)}${l.d ? ` <small>· ${esc(l.d)}</small>` : ''}</span></li>`).join('')}</ul>
+      ${more > 0 ? `<p class="sub" style="color:var(--ink-2)">…and ${more} more</p>` : ''}
+      <div class="sheet-actions"><button class="btn btn-primary" data-action="ack-changes">OK, got it</button></div>`);
+  }
+
+  async function refresh(opts = {}) {
+    let loaded = false;
     try {
       const soft = (p) => p.catch(() => null);   // new tables may not exist until add-plans.sql has been run
       const [events, spelling, members, classrooms, anchors, going, plans, planResponses] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses())]);
@@ -508,10 +612,12 @@
       if (going) state.going = going;
       if (plans) state.plans = plans;
       if (planResponses) state.planResponses = planResponses;
+      syncMine(); loaded = true;
     } catch (ex) {
       toast('Couldn\u2019t load the latest. Check your connection.');
     }
     renderView();
+    if (opts.announce && loaded) maybeAnnounce();
   }
 
   function renderView() {
@@ -2008,7 +2114,7 @@
       if (pull >= TRIGGER && !busy) {
         busy = true; setH(TRIGGER, true); if (z) z.classList.add('spin');
         const t0 = Date.now();
-        try { await refresh(); } catch {}
+        try { await refresh({ announce: true }); } catch {}
         const wait = 600 - (Date.now() - t0); if (wait > 0) await new Promise((r) => setTimeout(r, wait));
         if (z) { z.classList.remove('spin'); z.classList.add('done'); }
         await new Promise((r) => setTimeout(r, 750));       // 🎉 moment
@@ -2054,6 +2160,7 @@
     try {
       if (a === 'tab') { state.tab = el.dataset.tab; renderTabs(); renderView(); }
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
+      else if (a === 'ack-changes') { writeSeen(buildSnapshot()); closeSheet(); }
       else if (a === 'going') await setGoingFor(el.dataset.id, el.dataset.val);
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
@@ -2148,7 +2255,11 @@
   });
 
   // Refresh when someone comes back to the app.
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && state.me) refresh(); });
+  let hiddenAt = Date.now();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (state.me) refresh({ announce: Date.now() - hiddenAt > 10 * 60 * 1000 });
+  });
 
   /* ---------------- start ---------------- */
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
