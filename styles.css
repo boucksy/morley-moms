@@ -664,3 +664,7 @@ html { background: var(--bg); }
 .linkrow-text small { color: var(--ink-2); font-size: .82rem; }
 .linkrow-go { flex: none; color: var(--blue); display: grid; place-items: center; font-size: 1.6rem; }
 .linkrow-go svg { width: 20px; height: 20px; }
+.rsvp-btns { flex-wrap: nowrap; }
+.rsvp-btn { flex: 0 1 auto; padding: 7px 10px 7px 8px; font-size: .82rem; gap: 6px; white-space: nowrap; }
+.event .rsvp { margin-right: -44px; }
+.event .rsvp .who-line { margin-right: 44px; }
