@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 89;
+  const APP_VERSION = 90;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -2103,6 +2103,21 @@
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+  /* ---------------- appearance ---------------- */
+  const THEME_KEY = 'mm.theme';
+  const getTheme = () => { try { const t = localStorage.getItem(THEME_KEY); return t === 'light' || t === 'dark' ? t : 'auto'; } catch { return 'auto'; } };
+  function applyTheme(t) {
+    const root = document.documentElement;
+    if (t === 'light' || t === 'dark') root.setAttribute('data-theme', t); else root.removeAttribute('data-theme');
+    // Browser bar color: follow the choice, or the phone when on Auto.
+    document.querySelectorAll('meta[name="theme-color"][data-forced]').forEach((m) => m.remove());
+    if (t !== 'auto') {
+      const m = document.createElement('meta'); m.name = 'theme-color'; m.setAttribute('data-forced', '1');
+      m.content = t === 'dark' ? '#0E1220' : '#1F4BC9'; document.head.appendChild(m);
+    }
+  }
+  function setTheme(t) { try { if (t === 'auto') localStorage.removeItem(THEME_KEY); else localStorage.setItem(THEME_KEY, t); } catch {} applyTheme(t); }
+
   let feedbackKind = 'idea';
   function feedbackSheet() {
     const canTalk = !!SpeechRec || canRecord;
@@ -2141,6 +2156,10 @@
       ${subLead(`${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}`, 'sub-lead-16')}
       ${install}
       <label class="check-row"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
+      <fieldset class="theme-pick"><legend>Appearance</legend>
+        ${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => `<label class="theme-opt"><input type="radio" name="theme" value="${v}" ${getTheme() === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
+      </fieldset>
+      <p class="sub sub-meta">Auto follows your phone’s light or dark setting.</p>
       <p class="sub sub-meta">Privacy: your email is used only to sign you in. Other moms see your name, not your email. Only the group admin can see emails and when you last opened the app.</p>
       <p class="sub sub-meta">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
@@ -2440,6 +2459,7 @@
       const l = document.getElementById('dateLabel');
       if (l && !/Starts/.test(l.textContent)) l.textContent = e.target.value === 'homework' ? 'Due date' : 'Date';
     }
+    if (e.target && e.target.name === 'theme') { setTheme(e.target.value); return; }
     if (e.target && e.target.id === 'pinchZoom') { try { localStorage.setItem(PINCH_KEY, e.target.checked ? '1' : '0'); } catch {} applyZoom(); return; }
     if (e.target && e.target.id === 'myClass') { setMyClass(e.target.value); renderView(); }
   });

@@ -652,67 +652,164 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 /* =====================================================================
    5. DARK MODE (follows the phone's setting)
    ===================================================================== */
+/* Dark colors apply when the phone is in dark mode (Auto) or when someone picks Dark in settings.
+   Generated from one rule list; :where() keeps specificity the same as before. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --blue: #3A5BCB; --blue-dark: #2F4BB0; --blue-soft: #1F2A52; --blue-ink: #9DB4FF;
+:root:not([data-theme="light"]) { --blue: #3A5BCB; --blue-dark: #2F4BB0; --blue-soft: #1F2A52; --blue-ink: #9DB4FF;
     --yellow-soft: #3A3318;
     --ink: #EEF0F8; --ink-2: #B7BED3; --ink-3: #9AA2BA;
     --field-border: #76809F; --focus: #9DB4FF;
     --line: #2C3452; --bg: #0E1220; --white: #1A2036;
     --danger: #FF8179; --danger-soft: #3C1D22;
     --on-color: #FFFFFF; --on-ink: #10131C;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.35);
-  }
-  .btn-danger, .chip-noschool, .event.off .datebadge { background: #3C1D22; }
-  .event.off { background: #2A171B; }
-  .event.off h3 { color: #FFB1AB; }
-  .event.off .meta, .event.off .meta svg, .event.off .by { color: #E59C96; }
-  .chip-kids { color: #FFD66B; }
-  .spell.current .word { border-color: #6B5A1E; }
-  .event.cat-school { border-left-color: #6F89D6; }
-  .event.cat-homework { border-left-color: #8D99B8; }
-  .event.pto-event { background: #2B2713; border-left-color: #E0A100; }
-  .event.pto-event .datebadge { background: #4A3D12; color: #FFD66B; }
-  .event.pto-event.soon .datebadge, .event.soon .datebadge { background: var(--yellow); color: #10131C; }
-  .turnin { border-color: var(--ink-3); }
-  .chip-rides { color: var(--blue-ink); }
-  .chip-canceled, .mic.on, .mic.busy, .fb-chip.on { color: #10131C; }
-  .sp-hero select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23EEF0F8' stroke-width='2' fill='none'/%3E%3C/svg%3E"); }
-
-  /* Let each kind of card show its color */
-  .event.cat-pto { background: #1C2858; border-left-color: #7B9BFF; }
-  .event.cat-pto .datebadge { background: #2B3C85; color: #DCE5FF; }
-  .event.cat-school { background: #1B3347; border-left-color: #6CC4F0; }
-  .event.cat-school .datebadge { background: #27506F; color: #D6F0FF; }
-  .event.cat-volunteer { background: #3D3210; border-left-color: #FFC72C; }
-  .event.cat-volunteer .datebadge { background: #5E4C12; color: #FFE08A; }
-  .event.cat-social { background: #342547; border-left-color: #C9A8FF; }
-  .event.cat-social .datebadge { background: #4E3870; color: #EBDDFF; }
-  .event.cat-kids { background: #3A2F1B; border-left-color: #FFB74D; }
-  .event.cat-kids .datebadge { background: #5A4520; color: #FFD9A0; }
-  .event.cat-rides { background: #15343A; border-left-color: #4DD0C4; }
-  .event.cat-rides .datebadge { background: #1F5560; color: #CFF7F2; }
-  .event.cat-homework { background: #2C3345; border-left-color: #A8B4D6; }
-  .event.cat-homework .datebadge { background: #424C69; color: #E4E9F7; }
-  .event.cat-spelling { background: #20305E; border-left-color: #7B9BFF; }
-  .event.cat-spelling .datebadge { background: #34498A; color: #E1E8FF; }
-  .event.cat-noschool { background: #3A1A20; }
-  .event.pto-event { background: #3A3112; border-left-color: #F0B400; }
-  .event.cat-pto.soon .datebadge, .event.cat-school.soon .datebadge, .event.cat-volunteer.soon .datebadge, .event.cat-social.soon .datebadge,
-  .event.cat-kids.soon .datebadge, .event.cat-rides.soon .datebadge, .event.cat-homework.soon .datebadge, .event.cat-spelling.soon .datebadge,
-  .event.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
-  .event.off.soon .datebadge { background: var(--danger); color: #10131C; }
-  .event.cat-pto.pto-event .datebadge { background: #5A4A10; color: #FFE08A; }
-  .event .icon-btn:not(.on):not(.icon-link) { background: rgba(255,255,255,.12); color: #fff; }
-  .event.cat-pto.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
-
-  /* Text on yellow fills must stay dark */
-  .btn-yellow, .demo-banner, .chip-volunteer, .chip-now, .sp-num, .sp-today, .logo-mark, .tab.on .pill,
-  .sp-day:first-child, .sp-day:first-child * { color: #10131C; }
-  .sp-day:first-child .hint, .sp-day:first-child small { color: #3B3000; }
-  .sp-ask-btns.light .sp-num.on { color: #fff; }
-  .class-pick option { color: #EEF0F8; background: #1A2036; }
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.35); }
+:where(:root:not([data-theme="light"])) .btn-danger,
+:where(:root:not([data-theme="light"])) .chip-noschool,
+:where(:root:not([data-theme="light"])) .event.off .datebadge { background: #3C1D22; }
+:where(:root:not([data-theme="light"])) .event.off { background: #2A171B; }
+:where(:root:not([data-theme="light"])) .event.off h3 { color: #FFB1AB; }
+:where(:root:not([data-theme="light"])) .event.off .meta,
+:where(:root:not([data-theme="light"])) .event.off .meta svg,
+:where(:root:not([data-theme="light"])) .event.off .by { color: #E59C96; }
+:where(:root:not([data-theme="light"])) .chip-kids { color: #FFD66B; }
+:where(:root:not([data-theme="light"])) .spell.current .word { border-color: #6B5A1E; }
+:where(:root:not([data-theme="light"])) .event.cat-school { border-left-color: #6F89D6; }
+:where(:root:not([data-theme="light"])) .event.cat-homework { border-left-color: #8D99B8; }
+:where(:root:not([data-theme="light"])) .event.pto-event { background: #2B2713; border-left-color: #E0A100; }
+:where(:root:not([data-theme="light"])) .event.pto-event .datebadge { background: #4A3D12; color: #FFD66B; }
+:where(:root:not([data-theme="light"])) .event.pto-event.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.soon .datebadge { background: var(--yellow); color: #10131C; }
+:where(:root:not([data-theme="light"])) .turnin { border-color: var(--ink-3); }
+:where(:root:not([data-theme="light"])) .chip-rides { color: var(--blue-ink); }
+:where(:root:not([data-theme="light"])) .chip-canceled,
+:where(:root:not([data-theme="light"])) .mic.on,
+:where(:root:not([data-theme="light"])) .mic.busy,
+:where(:root:not([data-theme="light"])) .fb-chip.on { color: #10131C; }
+:where(:root:not([data-theme="light"])) .sp-hero select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23EEF0F8' stroke-width='2' fill='none'/%3E%3C/svg%3E"); }
+:where(:root:not([data-theme="light"])) .event.cat-pto { background: #1C2858; border-left-color: #7B9BFF; }
+:where(:root:not([data-theme="light"])) .event.cat-pto .datebadge { background: #2B3C85; color: #DCE5FF; }
+:where(:root:not([data-theme="light"])) .event.cat-school { background: #1B3347; border-left-color: #6CC4F0; }
+:where(:root:not([data-theme="light"])) .event.cat-school .datebadge { background: #27506F; color: #D6F0FF; }
+:where(:root:not([data-theme="light"])) .event.cat-volunteer { background: #3D3210; border-left-color: #FFC72C; }
+:where(:root:not([data-theme="light"])) .event.cat-volunteer .datebadge { background: #5E4C12; color: #FFE08A; }
+:where(:root:not([data-theme="light"])) .event.cat-social { background: #342547; border-left-color: #C9A8FF; }
+:where(:root:not([data-theme="light"])) .event.cat-social .datebadge { background: #4E3870; color: #EBDDFF; }
+:where(:root:not([data-theme="light"])) .event.cat-kids { background: #3A2F1B; border-left-color: #FFB74D; }
+:where(:root:not([data-theme="light"])) .event.cat-kids .datebadge { background: #5A4520; color: #FFD9A0; }
+:where(:root:not([data-theme="light"])) .event.cat-rides { background: #15343A; border-left-color: #4DD0C4; }
+:where(:root:not([data-theme="light"])) .event.cat-rides .datebadge { background: #1F5560; color: #CFF7F2; }
+:where(:root:not([data-theme="light"])) .event.cat-homework { background: #2C3345; border-left-color: #A8B4D6; }
+:where(:root:not([data-theme="light"])) .event.cat-homework .datebadge { background: #424C69; color: #E4E9F7; }
+:where(:root:not([data-theme="light"])) .event.cat-spelling { background: #20305E; border-left-color: #7B9BFF; }
+:where(:root:not([data-theme="light"])) .event.cat-spelling .datebadge { background: #34498A; color: #E1E8FF; }
+:where(:root:not([data-theme="light"])) .event.cat-noschool { background: #3A1A20; }
+:where(:root:not([data-theme="light"])) .event.pto-event { background: #3A3112; border-left-color: #F0B400; }
+:where(:root:not([data-theme="light"])) .event.cat-pto.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-school.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-volunteer.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-social.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-kids.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-rides.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-homework.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.cat-spelling.soon .datebadge,
+:where(:root:not([data-theme="light"])) .event.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
+:where(:root:not([data-theme="light"])) .event.off.soon .datebadge { background: var(--danger); color: #10131C; }
+:where(:root:not([data-theme="light"])) .event.cat-pto.pto-event .datebadge { background: #5A4A10; color: #FFE08A; }
+:where(:root:not([data-theme="light"])) .event .icon-btn:not(.on):not(.icon-link) { background: rgba(255,255,255,.12); color: #fff; }
+:where(:root:not([data-theme="light"])) .event.cat-pto.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
+:where(:root:not([data-theme="light"])) .btn-yellow,
+:where(:root:not([data-theme="light"])) .demo-banner,
+:where(:root:not([data-theme="light"])) .chip-volunteer,
+:where(:root:not([data-theme="light"])) .chip-now,
+:where(:root:not([data-theme="light"])) .sp-num,
+:where(:root:not([data-theme="light"])) .sp-today,
+:where(:root:not([data-theme="light"])) .logo-mark,
+:where(:root:not([data-theme="light"])) .tab.on .pill,
+:where(:root:not([data-theme="light"])) .sp-day:first-child,
+:where(:root:not([data-theme="light"])) .sp-day:first-child * { color: #10131C; }
+:where(:root:not([data-theme="light"])) .sp-day:first-child .hint,
+:where(:root:not([data-theme="light"])) .sp-day:first-child small { color: #3B3000; }
+:where(:root:not([data-theme="light"])) .sp-ask-btns.light .sp-num.on { color: #fff; }
+:where(:root:not([data-theme="light"])) .class-pick option { color: #EEF0F8; background: #1A2036; }
 }
+:root[data-theme="dark"] { --blue: #3A5BCB; --blue-dark: #2F4BB0; --blue-soft: #1F2A52; --blue-ink: #9DB4FF;
+    --yellow-soft: #3A3318;
+    --ink: #EEF0F8; --ink-2: #B7BED3; --ink-3: #9AA2BA;
+    --field-border: #76809F; --focus: #9DB4FF;
+    --line: #2C3452; --bg: #0E1220; --white: #1A2036;
+    --danger: #FF8179; --danger-soft: #3C1D22;
+    --on-color: #FFFFFF; --on-ink: #10131C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 16px rgba(0,0,0,.35); }
+:where(:root[data-theme="dark"]) .btn-danger,
+:where(:root[data-theme="dark"]) .chip-noschool,
+:where(:root[data-theme="dark"]) .event.off .datebadge { background: #3C1D22; }
+:where(:root[data-theme="dark"]) .event.off { background: #2A171B; }
+:where(:root[data-theme="dark"]) .event.off h3 { color: #FFB1AB; }
+:where(:root[data-theme="dark"]) .event.off .meta,
+:where(:root[data-theme="dark"]) .event.off .meta svg,
+:where(:root[data-theme="dark"]) .event.off .by { color: #E59C96; }
+:where(:root[data-theme="dark"]) .chip-kids { color: #FFD66B; }
+:where(:root[data-theme="dark"]) .spell.current .word { border-color: #6B5A1E; }
+:where(:root[data-theme="dark"]) .event.cat-school { border-left-color: #6F89D6; }
+:where(:root[data-theme="dark"]) .event.cat-homework { border-left-color: #8D99B8; }
+:where(:root[data-theme="dark"]) .event.pto-event { background: #2B2713; border-left-color: #E0A100; }
+:where(:root[data-theme="dark"]) .event.pto-event .datebadge { background: #4A3D12; color: #FFD66B; }
+:where(:root[data-theme="dark"]) .event.pto-event.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.soon .datebadge { background: var(--yellow); color: #10131C; }
+:where(:root[data-theme="dark"]) .turnin { border-color: var(--ink-3); }
+:where(:root[data-theme="dark"]) .chip-rides { color: var(--blue-ink); }
+:where(:root[data-theme="dark"]) .chip-canceled,
+:where(:root[data-theme="dark"]) .mic.on,
+:where(:root[data-theme="dark"]) .mic.busy,
+:where(:root[data-theme="dark"]) .fb-chip.on { color: #10131C; }
+:where(:root[data-theme="dark"]) .sp-hero select.input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23EEF0F8' stroke-width='2' fill='none'/%3E%3C/svg%3E"); }
+:where(:root[data-theme="dark"]) .event.cat-pto { background: #1C2858; border-left-color: #7B9BFF; }
+:where(:root[data-theme="dark"]) .event.cat-pto .datebadge { background: #2B3C85; color: #DCE5FF; }
+:where(:root[data-theme="dark"]) .event.cat-school { background: #1B3347; border-left-color: #6CC4F0; }
+:where(:root[data-theme="dark"]) .event.cat-school .datebadge { background: #27506F; color: #D6F0FF; }
+:where(:root[data-theme="dark"]) .event.cat-volunteer { background: #3D3210; border-left-color: #FFC72C; }
+:where(:root[data-theme="dark"]) .event.cat-volunteer .datebadge { background: #5E4C12; color: #FFE08A; }
+:where(:root[data-theme="dark"]) .event.cat-social { background: #342547; border-left-color: #C9A8FF; }
+:where(:root[data-theme="dark"]) .event.cat-social .datebadge { background: #4E3870; color: #EBDDFF; }
+:where(:root[data-theme="dark"]) .event.cat-kids { background: #3A2F1B; border-left-color: #FFB74D; }
+:where(:root[data-theme="dark"]) .event.cat-kids .datebadge { background: #5A4520; color: #FFD9A0; }
+:where(:root[data-theme="dark"]) .event.cat-rides { background: #15343A; border-left-color: #4DD0C4; }
+:where(:root[data-theme="dark"]) .event.cat-rides .datebadge { background: #1F5560; color: #CFF7F2; }
+:where(:root[data-theme="dark"]) .event.cat-homework { background: #2C3345; border-left-color: #A8B4D6; }
+:where(:root[data-theme="dark"]) .event.cat-homework .datebadge { background: #424C69; color: #E4E9F7; }
+:where(:root[data-theme="dark"]) .event.cat-spelling { background: #20305E; border-left-color: #7B9BFF; }
+:where(:root[data-theme="dark"]) .event.cat-spelling .datebadge { background: #34498A; color: #E1E8FF; }
+:where(:root[data-theme="dark"]) .event.cat-noschool { background: #3A1A20; }
+:where(:root[data-theme="dark"]) .event.pto-event { background: #3A3112; border-left-color: #F0B400; }
+:where(:root[data-theme="dark"]) .event.cat-pto.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-school.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-volunteer.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-social.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-kids.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-rides.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-homework.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.cat-spelling.soon .datebadge,
+:where(:root[data-theme="dark"]) .event.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
+:where(:root[data-theme="dark"]) .event.off.soon .datebadge { background: var(--danger); color: #10131C; }
+:where(:root[data-theme="dark"]) .event.cat-pto.pto-event .datebadge { background: #5A4A10; color: #FFE08A; }
+:where(:root[data-theme="dark"]) .event .icon-btn:not(.on):not(.icon-link) { background: rgba(255,255,255,.12); color: #fff; }
+:where(:root[data-theme="dark"]) .event.cat-pto.pto-event.soon .datebadge { background: var(--yellow); color: #10131C; }
+:where(:root[data-theme="dark"]) .btn-yellow,
+:where(:root[data-theme="dark"]) .demo-banner,
+:where(:root[data-theme="dark"]) .chip-volunteer,
+:where(:root[data-theme="dark"]) .chip-now,
+:where(:root[data-theme="dark"]) .sp-num,
+:where(:root[data-theme="dark"]) .sp-today,
+:where(:root[data-theme="dark"]) .logo-mark,
+:where(:root[data-theme="dark"]) .tab.on .pill,
+:where(:root[data-theme="dark"]) .sp-day:first-child,
+:where(:root[data-theme="dark"]) .sp-day:first-child * { color: #10131C; }
+:where(:root[data-theme="dark"]) .sp-day:first-child .hint,
+:where(:root[data-theme="dark"]) .sp-day:first-child small { color: #3B3000; }
+:where(:root[data-theme="dark"]) .sp-ask-btns.light .sp-num.on { color: #fff; }
+:where(:root[data-theme="dark"]) .class-pick option { color: #EEF0F8; background: #1A2036; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 /* =====================================================================
    6. UTILITIES
