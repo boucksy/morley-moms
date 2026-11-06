@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 78;
+  const APP_VERSION = 79;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -752,10 +752,12 @@
     if (ev.category !== 'homework' && localDay(d.toISOString()) < nextMon) {
       return `<div class="datebadge short" aria-hidden="true"><span class="dow">${dow}</span></div>`;
     }
-    return `<div class="datebadge" aria-hidden="true">
+    const now = startOfToday();
+    const sameMonth = d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return `<div class="datebadge${sameMonth ? ' nomon' : ''}" aria-hidden="true">
           <span class="dow">${dow}</span>
           <span class="day">${d.getDate()}</span>
-          <span class="mon">${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</span>
+          ${sameMonth ? '' : `<span class="mon">${d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()}</span>`}
         </div>`;
   }
 

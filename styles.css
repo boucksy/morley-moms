@@ -687,3 +687,8 @@ html { background: var(--bg); }
 
 .linkrow.slim { padding: 7px 14px; margin-bottom: 6px; gap: 12px; }
 .linkrow.slim .linkrow-icon { width: 36px; height: 36px; font-size: 1.35rem; border-radius: 10px; }
+
+.event .datebadge.nomon { height: 58px; }
+.event:has(.datebadge.nomon) { min-height: 76px; }
+.event .datebadge.short { height: 34px; }
+.event .datebadge.short .dow { font-size: .78rem; }
