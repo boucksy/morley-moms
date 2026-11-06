@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 90;
+  const APP_VERSION = 91;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -663,6 +663,7 @@
       <div class="sheet-actions"><button class="btn btn-primary" data-action="ack-changes">OK, got it</button></div>`);
   }
 
+  let lastSig = null;
   async function refresh(opts = {}) {
     let loaded = false;
     try {
@@ -677,7 +678,12 @@
     } catch (ex) {
       toast('Couldn\u2019t load the latest. Check your connection.');
     }
-    renderView();
+    // Coming back to the app: if nothing changed, don't redraw at all (no jump to the top).
+    // Otherwise redraw but keep the scroll position.
+    const sig = loaded ? JSON.stringify([state.events, state.spelling, state.members, state.classrooms, state.anchors, state.going, state.plans, state.planResponses, state.seen]) : null;
+    const unchanged = opts.quiet && loaded && sig === lastSig;
+    if (loaded) lastSig = sig;
+    if (!unchanged) renderView({ keep: true });
     if (opts.announce && loaded) maybeAnnounce();
   }
 
@@ -687,9 +693,10 @@
     if (!el || !el.dataset || !el.dataset.action) return null;
     const d = el.dataset; return ['action', 'id', 'val', 'filter', 'tab', 'occ'].map((k) => (d[k] !== undefined ? `[data-${k}="${CSS.escape(d[k])}"]` : '')).join('');
   };
-  function renderView() {
+  function renderView(opts = {}) {
     const view = $('#view');
     if (!view) return;
+    const keepY = window.scrollY;
     const ae = document.activeElement;
     const key = ae && view.contains(ae) ? focusKey(ae) : null;
     const hadFocusInView = !!(ae && ae !== view && view.contains(ae));
@@ -702,7 +709,7 @@
     if (state.tab === 'members') view.innerHTML = membersView();
     fitDetails();
     updateClassSlot();
-    window.scrollTo(0, 0);
+    window.scrollTo(0, opts.keep ? keepY : 0);   // new tab or filter starts at the top; a data refresh stays put
     if (hadFocusInView) {
       const twin = key && view.querySelector(key);
       if (twin) twin.focus({ preventScroll: true });
@@ -2363,13 +2370,13 @@
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
       else if (a === 'filter-menu') filterSheet();
       else if (a === 'hidden-cards') hiddenSheet();
-      else if (a === 'unhide') { unhideCard(el.dataset.id); hiddenSheet(); renderView(); }
+      else if (a === 'unhide') { unhideCard(el.dataset.id); hiddenSheet(); renderView({ keep: true }); }
       else if (a === 'filter-pick') { state.filter = el.dataset.filter; closeSheet(); renderView(); }
-      else if (a === 'filter-up') { moveFilter(el.dataset.filter, -1); filterSheet(); renderView(); }
-      else if (a === 'filter-down') { moveFilter(el.dataset.filter, 1); filterSheet(); renderView(); }
-      else if (a === 'filter-pin') { togglePin(el.dataset.filter); filterSheet(); renderView(); }
+      else if (a === 'filter-up') { moveFilter(el.dataset.filter, -1); filterSheet(); renderView({ keep: true }); }
+      else if (a === 'filter-down') { moveFilter(el.dataset.filter, 1); filterSheet(); renderView({ keep: true }); }
+      else if (a === 'filter-pin') { togglePin(el.dataset.filter); filterSheet(); renderView({ keep: true }); }
       else if (a === 'more-weeks') { const y = window.scrollY; state.weeksShown += 4; renderView(); window.scrollTo(0, y); }
-      else if (a === 'toggle-past') { state.showPast = !state.showPast; renderView(); }
+      else if (a === 'toggle-past') { state.showPast = !state.showPast; renderView({ keep: true }); }
       else if (a === 'add') {
         if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
         else if (state.tab === 'plans') planSheet();
@@ -2413,7 +2420,7 @@
       else if (a === 'install' && deferredInstall) { deferredInstall.prompt(); deferredInstall = null; closeSheet(); }
       else if (a === 'restart') { state.signin = { step: 'email', email: state.signin.email }; renderSignIn(); }
       else if (a === 'signout') { closeSheet(); await api.signOut(); state.me = null; state.signin = { step: 'email', email: '' }; renderSignIn(); }
-      else if (a === 'hw-done') { toggleDone(el.dataset.id); renderView(); }
+      else if (a === 'hw-done') { toggleDone(el.dataset.id); renderView({ keep: true }); }
       else if (a === 'ics') { const ev = state.events.find((x) => String(x.id) === el.dataset.id); if (ev) downloadIcs(ev); }
       else if (a === 'edit-event') { if (el.dataset.occ) occurrenceSheet(el.dataset.id, el.dataset.occ); else addEventSheet({}, el.dataset.id); }
       else if (a === 'occ-change') { const ev = state.events.find((e) => String(e.id) === el.dataset.id); if (ev) addEventSheet(oneDayFrom(ev, el.dataset.occ)); }
@@ -2468,7 +2475,7 @@
   let hiddenAt = Date.now();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { hiddenAt = Date.now(); return; }
-    if (state.me) { refresh({ announce: Date.now() - hiddenAt > 10 * 60 * 1000 }); touchSeen(); }
+    if (state.me) { refresh({ announce: Date.now() - hiddenAt > 10 * 60 * 1000, quiet: true }); touchSeen(); }
   });
 
   /* ---------------- start ---------------- */
