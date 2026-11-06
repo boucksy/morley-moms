@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 86;
+  const APP_VERSION = 87;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -299,7 +299,12 @@
         const rows = ok(await sb.from('member_seen').select('*'));
         const out = {}; (rows || []).forEach((r) => { out[r.email] = r.last_seen_at; }); return out;
       },
-      async listMembers() { return ok(await sb.from('members').select('*').order('display_name')); },
+      async listMembers() {
+        // Admins see the full list. Everyone else only gets names (no emails).
+        if (state.me && state.me.is_admin) return ok(await sb.from('members').select('*').order('display_name'));
+        const rows = ok(await sb.from('member_names').select('*').order('display_name'));
+        return (rows || []).map((r) => ({ ...r, email: '' }));
+      },
       async addMember(m) {
         const { error } = await sb.from('members').insert(m);
         if (error) throw new Error(error.code === '23505' ? 'That email is already on the list.' : error.message);
@@ -2130,6 +2135,7 @@
       ${subLead(`${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}`, 'sub-lead-16')}
       ${install}
       <label class="check-row"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
+      <p class="sub sub-meta">Privacy: your email is used only to sign you in. Other moms see your name, not your email. Only the group admin can see emails and when you last opened the app.</p>
       <p class="sub sub-meta">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
         <button class="btn btn-ghost" data-action="signout">Sign out</button>
