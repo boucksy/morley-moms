@@ -497,7 +497,18 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .event .datebadge.short .dow { font-size: .78rem; letter-spacing: .06em; }
 .event:has(.datebadge.nomon) { min-height: 68px; }
 /* No colored stripe on the left edge of cards */
-.event, .event[class*="cat-"], .event.off, .event.pto-event, .event.soon { border-left: 0 !important; }
+/* Calendar cards: a thin stroke instead of a shadow or colored stripe. */
+.event, .event[class*="cat-"], .event.off, .event.pto-event, .event.soon { border: 1.5px solid var(--stroke, var(--line)) !important; box-shadow: none; }
+.event.cat-pto { --stroke: #BFD0FF; }
+.event.cat-school { --stroke: #A9D6EF; }
+.event.cat-volunteer { --stroke: #F2D77A; }
+.event.cat-social { --stroke: #D3BEF5; }
+.event.cat-kids { --stroke: #F5C98F; }
+.event.cat-rides { --stroke: #9ED9D1; }
+.event.cat-homework { --stroke: #C3CBE0; }
+.event.cat-spelling { --stroke: #B3C2F5; }
+.event.cat-noschool { --stroke: #F1BAC0; }
+
 /* Title-only cards (like rides): center everything vertically, title on one line */
 .event:has(.body > h3:first-child + .card-tools:last-child) { align-items: center; }
 .event:has(.body > h3:first-child + .card-tools:last-child) .body { padding-right: 40px; }
@@ -857,3 +868,24 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 
 /* Header teacher picker: chevron so it reads as a dropdown. */
 .class-pick { -webkit-appearance: none; appearance: none; background-repeat: no-repeat; background-position: right 10px center; background-size: 12px 8px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); padding-right: 30px; }
+
+@media (prefers-color-scheme: dark) {
+:where(:root:not([data-theme="light"])) .event.cat-pto { --stroke: #4E64B0; }
+:where(:root:not([data-theme="light"])) .event.cat-school { --stroke: #3F8FB3; }
+:where(:root:not([data-theme="light"])) .event.cat-volunteer { --stroke: #A38418; }
+:where(:root:not([data-theme="light"])) .event.cat-social { --stroke: #8467B5; }
+:where(:root:not([data-theme="light"])) .event.cat-kids { --stroke: #B07C34; }
+:where(:root:not([data-theme="light"])) .event.cat-rides { --stroke: #2C8F88; }
+:where(:root:not([data-theme="light"])) .event.cat-homework { --stroke: #5F6A8A; }
+:where(:root:not([data-theme="light"])) .event.cat-spelling { --stroke: #4E64B0; }
+:where(:root:not([data-theme="light"])) .event.cat-noschool { --stroke: #8F4350; }
+}
+:where(:root[data-theme="dark"]) .event.cat-pto { --stroke: #4E64B0; }
+:where(:root[data-theme="dark"]) .event.cat-school { --stroke: #3F8FB3; }
+:where(:root[data-theme="dark"]) .event.cat-volunteer { --stroke: #A38418; }
+:where(:root[data-theme="dark"]) .event.cat-social { --stroke: #8467B5; }
+:where(:root[data-theme="dark"]) .event.cat-kids { --stroke: #B07C34; }
+:where(:root[data-theme="dark"]) .event.cat-rides { --stroke: #2C8F88; }
+:where(:root[data-theme="dark"]) .event.cat-homework { --stroke: #5F6A8A; }
+:where(:root[data-theme="dark"]) .event.cat-spelling { --stroke: #4E64B0; }
+:where(:root[data-theme="dark"]) .event.cat-noschool { --stroke: #8F4350; }
