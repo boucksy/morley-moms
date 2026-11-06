@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 83;
+  const APP_VERSION = 84;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -160,6 +160,8 @@
           .concat({ classroom_id, anchor_date, day_number, created_by_name: state.me.display_name });
         return delay();
       },
+      async touchSeen() {},
+      async listSeen() { return delay({ 'a@b.com': new Date(Date.now() - 3600e3).toISOString(), 'jess@example.com': new Date(Date.now() - 86400e3 * 1.2).toISOString() }); },
       async listMembers() { return delay([...db.members].sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''))); },
       async addMember(m) {
         if (db.members.find((x) => x.email === m.email)) throw new Error('That email is already on the list.');
@@ -288,6 +290,11 @@
       async setAnchor(classroom_id, anchor_date, day_number) {
         ok(await sb.from('rotation_anchors').upsert({ classroom_id, anchor_date, day_number }, { onConflict: 'classroom_id,anchor_date' }));
       },
+      async touchSeen() { try { await sb.rpc('touch_seen'); } catch { /* not important */ } },
+      async listSeen() {
+        const rows = ok(await sb.from('member_seen').select('*'));
+        const out = {}; (rows || []).forEach((r) => { out[r.email] = r.last_seen_at; }); return out;
+      },
       async listMembers() { return ok(await sb.from('members').select('*').order('display_name')); },
       async addMember(m) {
         const { error } = await sb.from('members').insert(m);
@@ -301,6 +308,7 @@
   const api = LIVE ? liveApi() : demoApi();
   const state = {
     me: null,
+    seen: {},
     tab: 'events',
     filter: 'all',
     showPast: false,
@@ -434,6 +442,7 @@
     if (!state.me) { renderNotMember(); return; }
     renderShell();
     await refresh({ announce: true });
+    touchSeen();
     maybeCleanup();
     maybeInstallSheet();
     if (sharedText) {
@@ -602,6 +611,22 @@
     });
     return lines;
   }
+  // Record that this mom opened the app (at most every 5 minutes). Only admins can read these.
+  let lastTouch = 0;
+  function touchSeen() {
+    if (!state.me || Date.now() - lastTouch < 5 * 60 * 1000) return;
+    lastTouch = Date.now(); api.touchSeen();
+  }
+  function seenText(iso) {
+    if (!iso) return 'Not yet';
+    const d = new Date(iso), now = new Date();
+    const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+    const diff = Math.round((day(now) - day(d)) / 86400000);
+    const t = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (diff <= 0) return `Today at ${t}`;
+    if (diff === 1) return 'Yesterday';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
   function maybeAnnounce() {
     if (!state.me || document.querySelector('.sheet-backdrop')) return;
     const snap = readSeen();
@@ -624,6 +649,7 @@
       const [events, spelling, members, classrooms, anchors, going, plans, planResponses] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses())]);
       Object.assign(state, { events, spelling, members, classrooms, anchors });
       if (going) state.going = going;
+      if (state.me && state.me.is_admin) { const seen = await soft(api.listSeen()); if (seen) state.seen = seen; }
       if (plans) state.plans = plans;
       if (planResponses) state.planResponses = planResponses;
       syncMine(); loaded = true;
@@ -1991,7 +2017,7 @@
           <div class="member">
             <span class="ava">${esc(initials(m.display_name || m.email))}</span>
             <div class="who"><strong>${esc(m.display_name || m.email)}${m.is_admin ? ' <span class="chip chip-volunteer">Admin</span>' : ''}</strong>
-              ${admin ? `<span>${esc(m.email)}</span>` : ''}</div>
+              ${admin ? `<span>${esc(m.email)}</span><span class="seen">Last seen: ${esc(seenText(state.seen[m.email]))}</span>` : ''}</div>
             ${admin && m.email !== state.me.email ? `<button class="btn btn-danger btn-small" data-action="del-member" data-email="${esc(m.email)}">Remove</button>` : ''}
           </div>`).join('')}
       </div>`;
@@ -2326,7 +2352,7 @@
   let hiddenAt = Date.now();
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { hiddenAt = Date.now(); return; }
-    if (state.me) refresh({ announce: Date.now() - hiddenAt > 10 * 60 * 1000 });
+    if (state.me) { refresh({ announce: Date.now() - hiddenAt > 10 * 60 * 1000 }); touchSeen(); }
   });
 
   /* ---------------- start ---------------- */

@@ -716,3 +716,6 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .spell .words .word::before { content: counter(w); min-width: 1.4em; font-size: .75rem; font-weight: 800; opacity: .55; text-align: right; }
 .spell .words .challenge-word { background: var(--blue-soft); border-color: var(--blue-soft); color: var(--blue); }
 .spell .words .challenge-word::before { content: "★"; counter-increment: none; opacity: .8; }
+
+.member .seen { display: block; font-size: var(--text-xs); color: var(--ink-3); margin-top: 2px; }
+.member .who .chip { display: inline-block; width: auto; }
