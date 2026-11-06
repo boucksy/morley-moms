@@ -432,11 +432,11 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
   border-left: 6px solid var(--line); /* neutralized below ("no colored stripe") */
   min-height: 0;
 }
-.event:has(.datebadge:not(.short)) { min-height: 96px; }
-.event .datebadge { width: 56px; height: 72px; border-radius: var(--radius-md); padding: var(--space-1) 0; box-sizing: border-box; gap: 1px; }
+.event:has(.datebadge:not(.short)) { min-height: 88px; }
+.event .datebadge { width: 56px; height: 64px; border-radius: var(--radius-md); padding: var(--space-1) 0; box-sizing: border-box; gap: 1px; }
 .event .datebadge .day { font-size: 1.35rem; }
 .event .datebadge .mon { font-size: var(--text-2xs); }
-.event .datebadge .dow { font-size: var(--text-2xs); }
+.event .datebadge .dow { font-size: .78rem; letter-spacing: .06em; }
 .event.soon .datebadge { background: var(--yellow); color: var(--ink); }
 .event .body { flex: 1; min-width: 0; padding-right: 44px; }
 .event h3 { overflow-wrap: anywhere; font-size: var(--text-base); font-weight: 800; margin: 0 0 var(--space-0h); padding-right: 0; }
@@ -481,10 +481,10 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .event.pto-event .datebadge { background: #FFE9A6; color: #7A5600; }
 .event.pto-event.soon .datebadge { background: var(--yellow); color: var(--ink); }
 /* Short (weekday-only) and no-month date blocks */
-.event .datebadge.nomon { height: 58px; }
+.event .datebadge.nomon { height: 52px; }
 .event .datebadge.short { height: 34px; width: 56px; }
 .event .datebadge.short .dow { font-size: .78rem; letter-spacing: .06em; }
-.event:has(.datebadge.nomon) { min-height: 76px; }
+.event:has(.datebadge.nomon) { min-height: 68px; }
 /* No colored stripe on the left edge of cards */
 .event, .event[class*="cat-"], .event.off, .event.pto-event, .event.soon { border-left: 0 !important; }
 /* Title-only cards (like rides): center everything vertically, title on one line */
