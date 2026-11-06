@@ -1,0 +1,9 @@
+# Minimal config so the Supabase CLI can deploy from GitHub.
+project_id = "morley-moms"
+
+[functions.transcribe]
+verify_jwt = true
+[functions.read-photo]
+verify_jwt = true
+[functions.send-feedback]
+verify_jwt = true
