@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 82;
+  const APP_VERSION = 83;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -744,7 +744,7 @@
     const slot = document.getElementById('classSlot');
     if (!slot) return;
     const used = state.events.some((e) => e.classroom_id) || state.spelling.some((s) => s.classroom_id);
-    if (!used || !state.classrooms.length || !['events', 'spelling'].includes(state.tab)) { slot.innerHTML = ''; return; }
+    if (!state.classrooms.length || !(state.tab === 'specials' || (used && ['events', 'spelling'].includes(state.tab)))) { slot.innerHTML = ''; return; }
     const mine = getMyClass();
     slot.innerHTML = `<select class="input class-pick" id="myClass" aria-label="Showing for which class"><option value="">All</option>${state.classrooms.map((c) => `<option value="${esc(c.id)}" ${c.id === mine ? 'selected' : ''}>${esc(shortClass(c))}</option>`).join('')}</select>`;
   }
@@ -1436,14 +1436,7 @@
 
     let hero = '';
     if (rooms.length) {
-      const picker = `
-        <div class="dd">
-          <span class="dd-text"><small>My kid’s class</small>${mine ? esc(mine.name) : 'Choose a class…'}</span>
-          <select class="input" id="myClass" aria-label="My kid’s class">
-            <option value="">Choose a class…</option>
-            ${rooms.map((c) => `<option value="${esc(c.id)}" ${c.id === myId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
-          </select>
-        </div>`;
+      const picker = mine ? '' : `<p class="sp-ask-q">Pick your kid’s teacher at the top right to see their day.</p>`;
       let body = '';
       if (!mine) {
         body = '';
@@ -1471,7 +1464,7 @@
           : `+ ${esc(ex.label)} days <small>· private</small>`}</button>
         <button type="button" class="sp-fix" data-action="fix-day" data-class="${esc(mine.id)}">Change day number</button>`;
       }
-      hero = `<div class="card sp-hero">${picker}${body}</div>`;
+      hero = (picker || body) ? `<div class="card sp-hero">${picker}${body}</div>` : '';
     }
 
     const roomCard = (c) => {
@@ -1498,7 +1491,7 @@
     return `
       <div class="page-head"><div><h2>Specials</h2></div></div>
       ${hero}
-      ${rooms.length ? rooms.map(roomCard).join('') : `
+      ${rooms.length ? (mine ? [mine] : rooms).map(roomCard).join('') : `
         <div class="card empty"><p class="big">No classes yet</p></div>`}`;
   }
 
