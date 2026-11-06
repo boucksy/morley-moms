@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 88;
+  const APP_VERSION = 89;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -646,8 +646,14 @@
     if (!state.me || document.querySelector('.sheet-backdrop')) return;
     const snap = readSeen();
     if (!snap) { writeSeen(buildSnapshot()); return; }       // first time on this phone: start from today
+    // At most once a day. Anything that changes in between (or while someone is away for days)
+    // piles up against the saved baseline and arrives together in the next sheet.
+    const day = isoDate(new Date());
+    let last = ''; try { last = localStorage.getItem('mm.lastNews') || ''; } catch {}
+    if (last === day) return;
     const lines = whatChanged(snap);
     if (!lines.length) { writeSeen(buildSnapshot()); return; }
+    try { localStorage.setItem('mm.lastNews', day); } catch {}
     const shown = lines.slice(0, 14), more = lines.length - shown.length;
     openSheet(`
       <h2>What’s new</h2>
