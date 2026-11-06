@@ -746,3 +746,6 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* Header teacher picker: chevron so it reads as a dropdown. */
+.class-pick { -webkit-appearance: none; appearance: none; background-repeat: no-repeat; background-position: right 10px center; background-size: 12px 8px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.5 6 6l4.5-4.5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); padding-right: 30px; }
