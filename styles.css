@@ -709,3 +709,9 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
    ===================================================================== */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 [hidden] { display: none !important; }
+
+/* Spelling lists: one list at a time, so give the words room (two numbered columns, bigger type). */
+.spell .words { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-2h); counter-reset: w; margin-top: var(--space-4); }
+.spell .words .word { counter-increment: w; display: flex; align-items: baseline; gap: var(--space-2); font-size: 1.125rem; font-weight: 700; padding: var(--space-2h) var(--space-3); border-radius: var(--radius-md); overflow-wrap: anywhere; }
+.spell .words .word::before { content: counter(w); min-width: 1.4em; font-size: .75rem; font-weight: 800; opacity: .55; text-align: right; }
+.spell .words.challenge { margin-top: var(--space-2h); }
