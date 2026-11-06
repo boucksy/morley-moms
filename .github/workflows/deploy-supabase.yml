@@ -11,7 +11,7 @@ name: Deploy to Supabase
 on:
   push:
     branches: [main]
-    paths: ["supabase/migrations/**", "supabase/functions/**", "supabase/config.toml"]
+    paths: [".github/workflows/deploy-supabase.yml", "supabase/migrations/**", "supabase/functions/**", "supabase/config.toml"]
   workflow_dispatch:
 
 permissions:
