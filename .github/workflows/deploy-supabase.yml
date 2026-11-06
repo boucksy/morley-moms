@@ -49,7 +49,7 @@ jobs:
         # GitHub's network has no IPv6, so go through Supabase's IPv4 pooler.
         run: |
           if [ -z "$DB_URL" ]; then echo "Add the SUPABASE_DB_URL secret (Supabase -> Connect -> Session pooler string)."; exit 1; fi
-          supabase db push --db-url "$DB_URL"
+          supabase db push --yes --db-url "$DB_URL"
       - name: Deploy Edge Functions
         if: steps.check.outputs.ready == 'true'
-        run: supabase functions deploy --project-ref "$PROJECT_REF"
+        run: supabase functions deploy --yes --project-ref "$PROJECT_REF"
