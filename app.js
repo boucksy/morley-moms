@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 81;
+  const APP_VERSION = 82;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1241,10 +1241,7 @@
             </div>
             <button class="btn btn-ghost btn-small" data-action="edit-spell" data-id="${esc(s.id)}">${ICON.edit} Edit</button>
           </div>
-          ${s.words && s.words.length ? `<div class="words">${s.words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>` : ''}
-          ${s.challenge_words && s.challenge_words.length ? `
-            <p class="words-label">Challenge words</p>
-            <div class="words challenge">${s.challenge_words.map((w) => `<span class="word">${esc(w)}</span>`).join('')}</div>` : ''}
+          ${(s.words && s.words.length) || (s.challenge_words && s.challenge_words.length) ? `<div class="words">${(s.words || []).map((w) => `<span class="word">${esc(w)}</span>`).join('')}${(s.challenge_words || []).map((w) => `<span class="word challenge-word">${esc(w)}</span>`).join('')}</div>` : ''}
           ${s.notes ? `<p class="details">${linkify(s.notes)}</p>` : ''}
           ${s.photo_path ? `<div class="photo-loading" data-photo="${esc(s.photo_path)}">Loading photo…</div>` : ''}
         </article>`;
