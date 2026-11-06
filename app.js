@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 76;
+  const APP_VERSION = 77;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1950,8 +1950,8 @@
       { icon: '\uD83D\uDCB3', title: 'MySchoolBucks', note: 'Lunch money login', url: 'https://www.myschoolbucks.com/' },
     ] },
     { group: 'School calendars', items: [
-      { icon: '\uD83D\uDCC5', title: '2026\u201327 LPS student calendar', note: 'Google Drive', url: 'https://drive.google.com/file/d/1VUhuFFjwMG-W8uQ1YlsR4JpVqQv37NR8/view' },
-      { icon: '\uD83D\uDCC5', title: '2027\u201328 LPS student calendar', note: 'Google Drive', url: 'https://drive.google.com/file/d/1r5UjTY5ROljnnShdZr6DHRdwM3-Rq1TV/view' },
+      { icon: '\uD83D\uDCC5', title: '26\u201327 LPS student calendar', note: 'Google Drive', url: 'https://drive.google.com/file/d/1VUhuFFjwMG-W8uQ1YlsR4JpVqQv37NR8/view' },
+      { icon: '\uD83D\uDCC5', title: '27\u201328 LPS student calendar', note: 'Google Drive', url: 'https://drive.google.com/file/d/1r5UjTY5ROljnnShdZr6DHRdwM3-Rq1TV/view' },
     ] },
     { group: 'Grades & attendance', items: [
       { icon: '\uD83C\uDF93', title: 'ParentVUE', note: 'LPS parent login', url: 'https://synergyvue.lps.org/PXP2_Login_Parent.aspx?regenerateSessionId=true' },
@@ -1965,13 +1965,19 @@
         ${g.items.map((l) => `
           <a class="card linkrow" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
             <span class="linkrow-icon" aria-hidden="true">${l.icon}</span>
-            <span class="linkrow-text"><strong>${esc(l.title)}</strong><small>${esc(l.note)}</small></span>
+            <span class="linkrow-text"><strong>${esc(l.title)}</strong></span>
             <span class="linkrow-go" aria-hidden="true">${ICON.link}</span>
           </a>`).join('')}`).join('')}
       <p class="section-label">The group</p>
       <button class="card linkrow" data-action="tab" data-tab="members" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
         <span class="linkrow-icon" aria-hidden="true">\uD83D\uDC6D</span>
-        <span class="linkrow-text"><strong>Group members</strong><small>${state.members.length} moms${state.me && state.me.is_admin ? ' \u00B7 add or remove' : ''}</small></span>
+        <span class="linkrow-text"><strong>Group members</strong></span>
+        <span class="linkrow-go" aria-hidden="true">\u203A</span>
+      </button>
+      <p class="section-label">Help make this better</p>
+      <button class="card linkrow" data-action="feedback" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
+        <span class="linkrow-icon" aria-hidden="true">\uD83D\uDCA1</span>
+        <span class="linkrow-text"><strong>Suggest a feature or report a bug</strong><small>Goes straight to Miranda</small></span>
         <span class="linkrow-go" aria-hidden="true">\u203A</span>
       </button>`;
   }
@@ -2058,7 +2064,6 @@
       <p class="sub" style="color:var(--ink-2);margin:-8px 0 16px">${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}</p>
       ${install}
       <label class="check-row" style="display:flex;gap:10px;align-items:center;margin:0 0 12px"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
-      <button class="btn btn-ghost" data-action="feedback" style="margin-bottom:12px;width:100%">💡 Suggest a feature or report a bug</button>
       <p class="sub" style="color:var(--ink-2);font-size:13px;margin:0 0 12px">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
         <button class="btn btn-ghost" data-action="signout">Sign out</button>
