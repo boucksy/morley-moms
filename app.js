@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 74;
+  const APP_VERSION = 75;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -137,6 +137,7 @@
       async transcribe() { throw new Error('Voice on iPhone works once the app is connected (see setup step 8). Type it for now.'); },
       async readPhoto() { throw new Error('demo'); },
       async readNote() { throw new Error('demo'); },
+      async sendFeedback() { return delay(); },
       async cleanupOld() { return 0; },
       async listClassrooms() { return delay([...db.classrooms].sort((a, b) => a.name.localeCompare(b.name))); },
       async saveClassroom(row, id) {
@@ -249,6 +250,13 @@
         const { data, error } = await sb.functions.invoke('transcribe', { body: fd });
         if (error) throw new Error('Couldn\u2019t catch that. Tap the mic and try again.');
         return (data && data.text) || '';
+      },
+      async sendFeedback(kind, message) {
+        const row = { kind, message, member_name: state.me.display_name || '', app_version: APP_VERSION, user_agent: (navigator.userAgent || '').slice(0, 300) };
+        const { error } = await sb.from('feedback').insert(row);
+        if (error) throw new Error('save');
+        // Email is best effort: the note is already saved either way.
+        try { await sb.functions.invoke('send-feedback', { body: row }); } catch { /* saved anyway */ }
       },
       async readNote(text) {
         const fd = new FormData();
@@ -2008,6 +2016,28 @@
   const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+  let feedbackKind = 'idea';
+  function feedbackSheet() {
+    const canTalk = !!SpeechRec || canRecord;
+    feedbackKind = 'idea';
+    openSheet(`
+      <h2>Tell Miranda</h2>
+      <div class="chips" id="fbKinds" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button type="button" class="fb-chip on" data-action="fb-kind" data-kind="idea">💡 Idea</button>
+        <button type="button" class="fb-chip" data-action="fb-kind" data-kind="bug">🐞 Bug</button>
+        <button type="button" class="fb-chip" data-action="fb-kind" data-kind="other">💬 Other</button>
+      </div>
+      ${canTalk ? `
+        <div class="qa-mic">
+          <button type="button" class="mic" data-action="mic" aria-label="Tap to talk">${ICON.mic}</button>
+          <p id="micStatus">Tap to talk</p>
+        </div>` : ''}
+      <textarea id="qaText" class="input qa-text" placeholder="What would make this app better? Or what went wrong?"></textarea>
+      <button type="button" class="btn btn-primary" data-action="fb-send" style="margin-top:12px">Send</button>
+      <button type="button" class="btn btn-ghost" data-action="close-sheet" style="margin-top:8px">Cancel</button>
+    `);
+  }
+
   function accountSheet() {
     let install = '';
     if (!isStandalone()) {
@@ -2024,6 +2054,7 @@
       <p class="sub" style="color:var(--ink-2);margin:-8px 0 16px">${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}</p>
       ${install}
       <label class="check-row" style="display:flex;gap:10px;align-items:center;margin:0 0 12px"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
+      <button class="btn btn-ghost" data-action="feedback" style="margin-bottom:12px;width:100%">💡 Suggest a feature or report a bug</button>
       <p class="sub" style="color:var(--ink-2);font-size:13px;margin:0 0 12px">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
         <button class="btn btn-ghost" data-action="signout">Sign out</button>
@@ -2181,6 +2212,19 @@
       }
       else if (a === 'account') accountSheet();
       else if (a === 'close-sheet') { stopMic(); closeSheet(); }
+      else if (a === 'feedback') { closeSheet(); feedbackSheet(); }
+      else if (a === 'fb-kind') {
+        feedbackKind = el.dataset.kind;
+        document.querySelectorAll('#fbKinds button').forEach((b) => b.classList.toggle('on', b === el));
+      }
+      else if (a === 'fb-send') {
+        const msg = ($('#qaText').value || '').trim();
+        if (!msg) { toast('Type or say something first.'); return; }
+        stopMic();
+        el.disabled = true;
+        try { await api.sendFeedback(feedbackKind, msg); closeSheet(); toast('Sent! Thank you 💛'); }
+        catch { el.disabled = false; toast('Couldn’t send that. Try again in a bit.'); }
+      }
       else if (a === 'mic') toggleMic();
       else if (a === 'qa-go') quickGo();
       else if (a === 'qa-paste') {
