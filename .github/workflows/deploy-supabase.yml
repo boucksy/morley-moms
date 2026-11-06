@@ -44,7 +44,7 @@ jobs:
         run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
       - name: Apply database migrations
         if: steps.check.outputs.ready == 'true'
-        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+        run: supabase db push --linked
       - name: Deploy Edge Functions
         if: steps.check.outputs.ready == 'true'
         run: supabase functions deploy --project-ref "$PROJECT_REF"
