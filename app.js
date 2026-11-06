@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 77;
+  const APP_VERSION = 78;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1963,13 +1963,13 @@
       ${QUICK_LINKS.map((g) => `
         <p class="section-label">${esc(g.group)}</p>
         ${g.items.map((l) => `
-          <a class="card linkrow" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
+          <a class="card linkrow slim" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">
             <span class="linkrow-icon" aria-hidden="true">${l.icon}</span>
             <span class="linkrow-text"><strong>${esc(l.title)}</strong></span>
             <span class="linkrow-go" aria-hidden="true">${ICON.link}</span>
           </a>`).join('')}`).join('')}
       <p class="section-label">The group</p>
-      <button class="card linkrow" data-action="tab" data-tab="members" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
+      <button class="card linkrow slim" data-action="tab" data-tab="members" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
         <span class="linkrow-icon" aria-hidden="true">\uD83D\uDC6D</span>
         <span class="linkrow-text"><strong>Group members</strong></span>
         <span class="linkrow-go" aria-hidden="true">\u203A</span>
@@ -1977,7 +1977,7 @@
       <p class="section-label">Help make this better</p>
       <button class="card linkrow" data-action="feedback" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
         <span class="linkrow-icon" aria-hidden="true">\uD83D\uDCA1</span>
-        <span class="linkrow-text"><strong>Suggest a feature or report a bug</strong><small>Goes straight to Miranda</small></span>
+        <span class="linkrow-text"><strong>Ideas &amp; bug reports</strong><small>Goes straight to Miranda</small></span>
         <span class="linkrow-go" aria-hidden="true">\u203A</span>
       </button>`;
   }
