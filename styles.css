@@ -457,6 +457,17 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .event.cat-volunteer { border-left-color: var(--yellow); }
 .event.cat-social { border-left-color: var(--ink); }
 .event.cat-kids { border-left-color: #F2D36B; }
+/* Light-mode category tints (dark mode has its own set below). */
+.event.cat-pto { background: #EBF1FF; } .event.cat-pto .datebadge { background: #D3E0FF; color: #1F3FA8; }
+.event.cat-school { background: #E8F5FC; } .event.cat-school .datebadge { background: #CBE9F8; color: #115A80; }
+.event.cat-volunteer { background: #FFF5D6; } .event.cat-volunteer .datebadge { background: #FFE49A; color: #6B4E00; }
+.event.cat-social { background: #F4ECFF; } .event.cat-social .datebadge { background: #E2D1FF; color: #5A2E94; }
+.event.cat-kids { background: #FFEFDD; } .event.cat-kids .datebadge { background: #FFD9A8; color: #7A4300; }
+.event.cat-rides { background: #DFF6F3; } .event.cat-rides .datebadge { background: #BDEBE5; color: #0B5A55; }
+.event.cat-homework { background: #EEF0F7; } .event.cat-homework .datebadge { background: #D6DCEB; color: #34405E; }
+.event.cat-spelling { background: #E8EDFF; } .event.cat-spelling .datebadge { background: #CBD6FF; color: #26388F; }
+.event.cat-noschool { background: #FDEAEC; }
+
 .event.cat-rides { border-left-color: var(--blue-dark); }
 /* No-school cards are pink */
 .event.off { background: #FDE7E9; border-left-color: var(--danger); }
