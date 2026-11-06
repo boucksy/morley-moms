@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 75;
+  const APP_VERSION = 76;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1001,9 +1001,12 @@
       title: 'Spelling test', subtitle: s.title || '', words: s.words || [],
       starts_at: parseDate(s.test_date).toISOString(), ends_at: null, all_day: true, repeat_days: [],
     }));
+    // Hidden cards drop off the hidden list once their dates have passed (or the card is gone).
+    const keepHidden = [...hiddenIds()].filter((id) => { const ev = state.events.find((x) => String(x.id) === id); return ev && lastDayOf(ev) >= today; });
+    if (keepHidden.length !== hiddenIds().size) writeJson(HIDE_KEY, keepHidden);
     const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
     const items = [
-      ...oneTime.filter((e) => lastDayOf(e) >= today && (!isDone(e) || state.filter === 'homework') && !(isRange(e) && isHidden(e))),
+      ...oneTime.filter((e) => lastDayOf(e) >= today && !(isRange(e) && isHidden(e))),
       ...state.events.filter((e) => isRepeating(e) && match(e) && forMe(e)).flatMap((e) => occurrencesOf(e, today, off)),
     ];
     // Something already under way (like a break) is listed under this week.
@@ -1429,12 +1432,13 @@
     let hero = '';
     if (rooms.length) {
       const picker = `
-        <label class="field my-class"><span>My kid’s class</span>
-          <select class="input" id="myClass">
+        <div class="dd">
+          <span class="dd-text"><small>My kid’s class</small>${mine ? esc(mine.name) : 'Choose a class…'}</span>
+          <select class="input" id="myClass" aria-label="My kid’s class">
             <option value="">Choose a class…</option>
             ${rooms.map((c) => `<option value="${esc(c.id)}" ${c.id === myId ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
           </select>
-        </label>`;
+        </div>`;
       let body = '';
       if (!mine) {
         body = '';
@@ -2071,6 +2075,23 @@
     wrap.addEventListener('click', (e) => { if (e.target === wrap) { stopMic(); closeSheet(); } });
     document.body.appendChild(wrap);
     document.body.style.overflow = 'hidden';
+    // Pull the sheet down to dismiss it.
+    (() => {
+      const sh = wrap.querySelector('.sheet'); let y0 = null, dy = 0;
+      sh.addEventListener('touchstart', (e) => { y0 = sh.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; sh.style.transition = 'none'; }, { passive: true });
+      sh.addEventListener('touchmove', (e) => {
+        if (y0 === null) return;
+        dy = e.touches[0].clientY - y0;
+        if (dy > 0 && sh.scrollTop <= 0) sh.style.transform = `translateY(${dy}px)`; else sh.style.transform = '';
+      }, { passive: true });
+      sh.addEventListener('touchend', () => {
+        if (y0 === null) return;
+        sh.style.transition = 'transform .2s ease';
+        if (dy > 110 && sh.scrollTop <= 0) { sh.style.transform = 'translateY(100%)'; setTimeout(() => { stopMic(); closeSheet(); }, 180); }
+        else sh.style.transform = '';
+        y0 = null;
+      });
+    })();
     const form = wrap.querySelector('#sheetForm');
     if (form && onSubmit) {
       const first = form.querySelector('input:not([type=radio]):not([type=date]), textarea');
