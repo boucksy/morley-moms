@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 87;
+  const APP_VERSION = 88;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -116,10 +116,10 @@
       async addEvent(row) { db.events.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name }); return delay(); },
       async updateEvent(id, row) { Object.assign(db.events.find((e) => e.id === id), row); return delay(); },
       async deleteEvent(id) { db.events = db.events.filter((e) => e.id !== id); return delay(); },
-      async listGoing() { return delay(db.going.filter((g) => g.going || g.member_email === state.me.email.toLowerCase()).map((g) => ({ ...g }))); },
+      async listGoing() { return delay(db.going.filter((g) => g.going || g.member_id === state.me.id).map((g) => ({ ...g }))); },
       async setGoing(eventId, going, me) {
-        db.going = db.going.filter((g) => !(g.event_id === eventId && g.member_email === me.email));
-        if (going !== null) db.going.push({ event_id: eventId, member_email: me.email, member_name: me.name, going });
+        db.going = db.going.filter((g) => !(g.event_id === eventId && g.member_id === me.id));
+        if (going !== null) db.going.push({ event_id: eventId, member_id: me.id, member_name: me.name, going });
         return delay();
       },
       async listPlans() { return delay(db.plans.map((p) => ({ ...p }))); },
@@ -128,8 +128,8 @@
       async deletePlan(id) { db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
       async listPlanResponses() { return delay(db.planResponses.map((r) => ({ ...r }))); },
       async setPlanStatus(planId, status, me) {
-        db.planResponses = db.planResponses.filter((r) => !(r.plan_id === planId && r.member_email === me.email));
-        if (status) db.planResponses.push({ plan_id: planId, member_email: me.email, member_name: me.name, status });
+        db.planResponses = db.planResponses.filter((r) => !(r.plan_id === planId && r.member_id === me.id));
+        if (status) db.planResponses.push({ plan_id: planId, member_id: me.id, member_name: me.name, status });
         return delay();
       },
       async listSpelling() { return delay([...db.spelling].sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of))); },
@@ -200,8 +200,8 @@
       async deleteEvent(id) { ok(await sb.from('events').delete().eq('id', id)); },
       async listGoing() { return ok(await sb.from('event_going').select('*')); },
       async setGoing(eventId, going, me) {
-        if (going === null) ok(await sb.from('event_going').delete().eq('event_id', eventId).eq('member_email', me.email));
-        else ok(await sb.from('event_going').upsert({ event_id: eventId, member_email: me.email, member_name: me.name, going }, { onConflict: 'event_id,member_email' }));
+        if (going === null) ok(await sb.from('event_going').delete().eq('event_id', eventId).eq('member_id', me.id));
+        else ok(await sb.from('event_going').upsert({ event_id: eventId, member_id: me.id, member_name: me.name, going }, { onConflict: 'event_id,member_id' }));
       },
       async listPlans() { return ok(await sb.from('plans').select('*').order('created_at', { ascending: false })); },
       async addPlan(row) { ok(await sb.from('plans').insert(row)); },
@@ -209,8 +209,8 @@
       async deletePlan(id) { ok(await sb.from('plans').delete().eq('id', id)); },
       async listPlanResponses() { return ok(await sb.from('plan_responses').select('*')); },
       async setPlanStatus(planId, status, me) {
-        if (!status) ok(await sb.from('plan_responses').delete().eq('plan_id', planId).eq('member_email', me.email));
-        else ok(await sb.from('plan_responses').upsert({ plan_id: planId, member_email: me.email, member_name: me.name, status }, { onConflict: 'plan_id,member_email' }));
+        if (!status) ok(await sb.from('plan_responses').delete().eq('plan_id', planId).eq('member_id', me.id));
+        else ok(await sb.from('plan_responses').upsert({ plan_id: planId, member_id: me.id, member_name: me.name, status }, { onConflict: 'plan_id,member_id' }));
       },
       async listSpelling() { return ok(await sb.from('spelling_lists').select('*').order('test_date', { ascending: false, nullsFirst: false }).order('week_of', { ascending: false }).limit(30)); },
       async addSpelling(row, file) {
@@ -552,8 +552,8 @@
   function buildSnapshot() {
     const o = { v: 1, ev: {}, sp: {}, pl: {}, cl: {}, go: {}, pr: {} };
     Object.keys(RECS).forEach((k) => LISTS[k]().forEach((x) => { o[k][x.id] = RECS[k](x); }));
-    state.going.forEach((g) => { if (g.going) o.go[g.event_id + '|' + g.member_email] = 1; });
-    state.planResponses.forEach((r) => { o.pr[r.plan_id + '|' + r.member_email] = r.status; });
+    state.going.forEach((g) => { if (g.going) o.go[g.event_id + '|' + g.member_id] = 1; });
+    state.planResponses.forEach((r) => { o.pr[r.plan_id + '|' + r.member_id] = r.status; });
     return o;
   }
   // Things I changed myself shouldn't be announced back to me.
@@ -575,7 +575,7 @@
     if (snap && any) writeSeen(snap);
   }
   function whatChanged(snap) {
-    const lines = [], me = state.me, today = startOfToday(), mail = myEmail();
+    const lines = [], me = state.me, today = startOfToday(), mail = myId();
     const mine = (x) => x.created_by && me && x.created_by === me.id;
     const upcoming = (e) => (isRepeating(e) ? (!e.repeat_until || parseDate(e.repeat_until) >= today) : lastDayOf(e) >= today);
     const names = (arr) => { const n = [...new Set(arr.map((r) => firstName(r.member_name)))].sort(); return n.length > 1 ? n.slice(0, -1).join(', ') + ' and ' + n[n.length - 1] : n[0]; };
@@ -612,13 +612,13 @@
       lines.push({ i: '⭐', t: `Specials updated for ${c.name}` });
     });
     const goBy = {};
-    state.going.forEach((g) => { if (g.going && g.member_email !== mail && !snap.go[g.event_id + '|' + g.member_email]) (goBy[g.event_id] = goBy[g.event_id] || []).push(g); });
+    state.going.forEach((g) => { if (g.going && g.member_id !== mail && !snap.go[g.event_id + '|' + g.member_id]) (goBy[g.event_id] = goBy[g.event_id] || []).push(g); });
     Object.keys(goBy).forEach((id) => {
       const e = state.events.find((x) => String(x.id) === id); if (!e || !upcoming(e)) return;
       const arr = goBy[id]; lines.push({ i: '✅', t: `${names(arr)} ${arr.length === 1 ? 'is' : 'are'} going to ${e.title}` });
     });
     const prBy = {};
-    state.planResponses.forEach((r) => { if (r.member_email !== mail && snap.pr[r.plan_id + '|' + r.member_email] !== r.status) (prBy[r.plan_id + '|' + r.status] = prBy[r.plan_id + '|' + r.status] || []).push(r); });
+    state.planResponses.forEach((r) => { if (r.member_id !== mail && snap.pr[r.plan_id + '|' + r.member_id] !== r.status) (prBy[r.plan_id + '|' + r.status] = prBy[r.plan_id + '|' + r.status] || []).push(r); });
     Object.keys(prBy).forEach((k) => {
       const [pid, st] = k.split('|'); const p = state.plans.find((x) => String(x.id) === pid); if (!p) return;
       const arr = prBy[k];
@@ -919,11 +919,11 @@
   }
 
   // ---- who's going (events) and plans ----
-  const myEmail = () => (state.me && state.me.email ? state.me.email.toLowerCase() : '');
-  const myName = () => (state.me && (state.me.display_name || state.me.email)) || '';
+  const myId = () => (state.me && state.me.id) || '';
+  const myName = () => (state.me && state.me.display_name) || 'A mom';
   const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || 'Someone';
   const goingFor = (eventId) => state.going.filter((g) => g.event_id === eventId && g.going);
-  const myGoing = (eventId) => { const g = state.going.find((x) => x.event_id === eventId && x.member_email === myEmail()); return g ? g.going : null; };
+  const myGoing = (eventId) => { const g = state.going.find((x) => x.event_id === eventId && x.member_id === myId()); return g ? g.going : null; };
   function goingBlock(ev) {
     const yes = goingFor(ev.id), mine = myGoing(ev.id);
     const names = yes.map((g) => firstName(g.member_name)).sort((a, b) => a.localeCompare(b));
@@ -938,23 +938,23 @@
   async function setGoingFor(eventId, val) {
     const cur = myGoing(eventId);
     const next = val === 'yes' ? (cur === true ? null : true) : (cur === false ? null : false);
-    state.going = state.going.filter((g) => !(g.event_id === eventId && g.member_email === myEmail()));
-    if (next !== null) state.going.push({ event_id: eventId, member_email: myEmail(), member_name: myName(), going: next });
+    state.going = state.going.filter((g) => !(g.event_id === eventId && g.member_id === myId()));
+    if (next !== null) state.going.push({ event_id: eventId, member_id: myId(), member_name: myName(), going: next });
     keepScroll(renderView);
-    try { await api.setGoing(eventId, next, { email: myEmail(), name: myName() }); }
+    try { await api.setGoing(eventId, next, { id: myId(), name: myName() }); }
     catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
   }
   function keepScroll(fn) { const y = window.scrollY; fn(); window.scrollTo(0, y); }
 
   const respFor = (planId, status) => state.planResponses.filter((r) => r.plan_id === planId && r.status === status);
-  const myResp = (planId) => { const r = state.planResponses.find((x) => x.plan_id === planId && x.member_email === myEmail()); return r ? r.status : null; };
+  const myResp = (planId) => { const r = state.planResponses.find((x) => x.plan_id === planId && x.member_id === myId()); return r ? r.status : null; };
   async function setPlanStatusFor(planId, status) {
     const cur = myResp(planId);
     const next = cur === status ? null : status;
-    state.planResponses = state.planResponses.filter((r) => !(r.plan_id === planId && r.member_email === myEmail()));
-    if (next) state.planResponses.push({ plan_id: planId, member_email: myEmail(), member_name: myName(), status: next });
+    state.planResponses = state.planResponses.filter((r) => !(r.plan_id === planId && r.member_id === myId()));
+    if (next) state.planResponses.push({ plan_id: planId, member_id: myId(), member_name: myName(), status: next });
     keepScroll(renderView);
-    try { await api.setPlanStatus(planId, next, { email: myEmail(), name: myName() }); }
+    try { await api.setPlanStatus(planId, next, { id: myId(), name: myName() }); }
     catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
   }
   function planCard(p) {

@@ -26,7 +26,7 @@
 .btn-block { width: 100%; }
 .btn-install-top { margin: 4px 0 12px; }
 .link-btn-clear { margin: -4px 0 12px; }
-.link-btn-back { margin: 0 0 8px; }
+.link-btn.link-btn-back { margin: 0 0 8px; width: auto; text-align: left; display: block; }
 
 /* Form bits */
 .input-compact { min-height: 0; }
