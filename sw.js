@@ -5,6 +5,7 @@ const SHELL = [
   './',
   'index.html',
   'styles.css',
+  'styles-components.css',
   'app.js',
   'quickadd.js',
   'demo-calendar.js',

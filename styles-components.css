@@ -1,0 +1,43 @@
+/* Morley Moms: component and utility classes used by the markup helpers in app.js.
+   Loaded after styles.css. Uses only existing custom properties. */
+
+/* Spacing utilities */
+.mt-0 { margin-top: 0; }
+.mt-4 { margin-top: 4px; }
+.mt-8 { margin-top: 8px; }
+.mt-10 { margin-top: 10px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mb-0 { margin-bottom: 0; }
+.mb-12 { margin-bottom: 12px; }
+
+/* Text utilities */
+.text-2 { color: var(--ink-2); }
+.hint-danger { color: var(--danger); }
+.hint-photo { margin: 0 0 8px; }
+
+/* Lead-in paragraph under a sheet heading (subLead helper) */
+.sub-lead { color: var(--ink-2); margin: -8px 0 12px; }
+.sub-lead.sub-lead-6 { margin: -6px 0 14px; }
+.sub-lead.sub-lead-16 { margin: -8px 0 16px; }
+.sub-meta { color: var(--ink-2); font-size: 13px; margin: 0 0 12px; }
+
+/* Buttons */
+.btn-block { width: 100%; }
+.btn-install-top { margin: 4px 0 12px; }
+.link-btn-clear { margin: -4px 0 12px; }
+.link-btn-back { margin: 0 0 8px; }
+
+/* Form bits */
+.input-compact { min-height: 0; }
+.check-row { display: flex; gap: 10px; align-items: center; margin: 0 0 12px; }
+
+/* Rows, chips, cards */
+.actions-flush { margin: 0; }
+.chips-wrap { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.frow-name-all { width: 100%; margin-bottom: 8px; }
+.frow-name-static { cursor: default; }
+.frow-when { font-weight: 600; color: var(--ink-2); }
+.linkrow-btn { width: 100%; text-align: left; border: 0; font: inherit; color: inherit; cursor: pointer; }
+.card-list { padding: 4px 16px; }
+.card-flat-yellow { background: var(--yellow-soft); box-shadow: none; }

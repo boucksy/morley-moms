@@ -13,6 +13,12 @@
   /* ---------------- helpers ---------------- */
   const $ = (sel, root = document) => root.querySelector(sel);
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Small markup helpers (design-system components). Classes live in styles-components.css.
+  // Ghost "Cancel" button that closes the open sheet.
+  const cancelBtn = (cls = '') => `<button class="btn btn-ghost${cls ? ' ' + cls : ''}" type="button" data-action="close-sheet">Cancel</button>`;
+  // Muted lead-in paragraph under a sheet heading; mod is '', 'sub-lead-6' or 'sub-lead-16'.
+  const subLead = (html, mod = '') => `<p class="sub sub-lead${mod ? ' ' + mod : ''}">${html}</p>`;
   const linkify = (s) => esc(s).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
   const initials = (name) => (name || '?').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
   const pad = (n) => String(n).padStart(2, '0');
@@ -336,7 +342,7 @@
           <label class="field"><span>Email</span>
             <input class="input" type="email" name="email" inputmode="email" autocomplete="email" autocapitalize="off" required value="${esc(s.email)}" placeholder="you@example.com">
           </label>
-          ${err ? `<p class="hint" style="color:var(--danger)">${esc(err)}</p>` : ''}
+          ${err ? `<p class="hint hint-danger">${esc(err)}</p>` : ''}
           <button class="btn btn-primary" type="submit">Send my code</button>
         </form>`
       : `
@@ -347,7 +353,7 @@
           <label class="field"><span class="sr-only">6-digit code</span>
             <input class="input code-input" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" required placeholder="••••••">
           </label>
-          ${err ? `<p class="hint" style="color:var(--danger)">${esc(err)}</p>` : ''}
+          ${err ? `<p class="hint hint-danger">${esc(err)}</p>` : ''}
           <button class="btn btn-primary" type="submit">Sign in</button>
           <button class="link-btn" type="button" data-action="restart">Use a different email</button>
         </form>`;
@@ -464,11 +470,11 @@
     const steps = isIOS()
       ? `<ol class="install-steps"><li>Open this page in <strong>Safari</strong>.</li><li>Tap the <strong>Share</strong> button (square with an arrow).</li><li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li></ol>`
       : deferredInstall
-        ? `<button class="btn btn-yellow" data-action="install" style="margin:4px 0 12px">Add to my home screen</button>`
+        ? `<button class="btn btn-yellow btn-install-top" data-action="install">Add to my home screen</button>`
         : `<ol class="install-steps"><li>In Chrome, tap the <strong>⋮</strong> menu.</li><li>Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li></ol>`;
     openSheet(`
       <h2>Put Morley Moms on your home screen</h2>
-      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Then it opens like any other app.</p>
+      ${subLead(`Then it opens like any other app.`)}
       ${steps}
       <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Not now</button></div>`);
   }
@@ -605,9 +611,9 @@
     const shown = lines.slice(0, 14), more = lines.length - shown.length;
     openSheet(`
       <h2>What’s new</h2>
-      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Since you last checked</p>
+      ${subLead(`Since you last checked`)}
       <ul class="changes">${shown.map((l) => `<li><span class="ci" aria-hidden="true">${l.i}</span><span>${esc(l.t)}${l.d ? ` <small>· ${esc(l.d)}</small>` : ''}</span></li>`).join('')}</ul>
-      ${more > 0 ? `<p class="sub" style="color:var(--ink-2)">…and ${more} more</p>` : ''}
+      ${more > 0 ? `<p class="sub text-2">…and ${more} more</p>` : ''}
       <div class="sheet-actions"><button class="btn btn-primary" data-action="ack-changes">OK, got it</button></div>`);
   }
 
@@ -906,7 +912,7 @@
       </div>
       ${when ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>${esc(when)}</span></p>` : ''}
       ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
-      <div class="rsvp-btns" style="margin-top:10px">
+      <div class="rsvp-btns mt-10">
         <button class="rsvp-btn ${mine === 'interested' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="interested" aria-pressed="${mine === 'interested'}"><span class="box" aria-hidden="true">${mine === 'interested' ? '✓' : ''}</span>Interested</button>
         <button class="rsvp-btn ${mine === 'signed_up' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="signed_up" aria-pressed="${mine === 'signed_up'}"><span class="box" aria-hidden="true">${mine === 'signed_up' ? '✓' : ''}</span>We signed up</button>
       </div>
@@ -918,7 +924,7 @@
     const list = [...state.plans].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     return `
       <div class="page-head"><div><h2>Plans</h2></div></div>
-      <p class="sub" style="color:var(--ink-2);margin:-6px 0 14px">Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.</p>
+      ${subLead(`Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.`, 'sub-lead-6')}
       ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans yet</p><p>Tap + to add something we might do together.</p></div>`}`;
   }
   function planSheet(editId) {
@@ -932,7 +938,7 @@
         <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="Cost, dates, what the girls would do…">${esc(p && p.details ? p.details : '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${p ? 'Save changes' : 'Add plan'}</button>
-          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${cancelBtn()}
           ${p ? `<button class="btn btn-danger" type="button" data-action="del-plan" data-id="${esc(p.id)}">Delete</button>` : ''}
         </div>
       </form>`, async (fd) => {
@@ -971,8 +977,8 @@
         <button class="pin-btn ${pins.includes(id) ? 'on' : ''}" data-action="filter-pin" data-filter="${id}" aria-pressed="${pins.includes(id)}">${pins.includes(id) ? 'Pinned' : 'Pin'}</button>
       </div>`).join('');
     const html = `<h2>Filters</h2>
-      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Tap a name to use it. Pin up to 3 to keep them on the main bar (${pins.length}/3). Use the arrows to reorder.</p>
-      <button class="frow-name ${state.filter === 'all' ? 'on' : ''}" data-action="filter-pick" data-filter="all" style="width:100%;margin-bottom:8px">All</button>
+      ${subLead(`Tap a name to use it. Pin up to 3 to keep them on the main bar (${pins.length}/3). Use the arrows to reorder.`)}
+      <button class="frow-name frow-name-all ${state.filter === 'all' ? 'on' : ''}" data-action="filter-pick" data-filter="all">All</button>
       ${rows}
       <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Done</button></div>`;
     const sheet = document.querySelector('.sheet');
@@ -1028,10 +1034,10 @@
       <div class="filters" role="toolbar" aria-label="Filter events">${filters}</div>
       ${shown.length ? shown.map((w) => `${w.key === isoDate(mondayOf(today)) ? '' : `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>`}${w.items.map(eventCard).join('')}`).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
-      ${weeks.length > shown.length ? `<button class="btn btn-ghost" style="width:100%;margin-top:4px" data-action="more-weeks">Show more weeks</button>` : ''}
-      ${state.events.some((e) => isRange(e) && isHidden(e)) ? `<button class="btn btn-ghost btn-small" style="margin-top:12px" data-action="hidden-cards">Hidden cards (${state.events.filter((e) => isRange(e) && isHidden(e)).length})</button>` : ''}
+      ${weeks.length > shown.length ? `<button class="btn btn-ghost btn-block mt-4" data-action="more-weeks">Show more weeks</button>` : ''}
+      ${state.events.some((e) => isRange(e) && isHidden(e)) ? `<button class="btn btn-ghost btn-small mt-12" data-action="hidden-cards">Hidden cards (${state.events.filter((e) => isRange(e) && isHidden(e)).length})</button>` : ''}
       ${past.length ? `
-        <button class="btn btn-ghost btn-small" style="margin-top:12px" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
+        <button class="btn btn-ghost btn-small mt-12" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
   }
 
@@ -1079,22 +1085,22 @@
           <label class="field"><span>From <small>(optional)</small></span><input class="input" type="time" name="time" value="${esc(p.time || '')}"></label>
           <label class="field"><span>To <small>(optional)</small></span><input class="input" type="time" name="end_time" value="${esc(p.end_time || '')}"></label>
         </div>
-        <button type="button" class="link-btn" data-action="clear-times" style="margin:-4px 0 12px">Clear time</button>
+        <button type="button" class="link-btn link-btn-clear" data-action="clear-times">Clear time</button>
         <div class="field" ${series ? 'hidden' : ''}><span>Repeats every week? <small>(optional)</small></span>
           <div class="seg">${['mon', 'tue', 'wed', 'thu', 'fri'].map((k) => `<label><input type="checkbox" name="repeat_days" value="${k}" ${reps.includes(k) ? 'checked' : ''}><span>${DOW_SHORT[k]}</span></label>`).join('')}</div>
-          <label class="field until-field" style="margin:10px 0 0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
+          <label class="field until-field mt-10 mb-0"><span>Until </span><input class="input" type="date" name="repeat_until" value="${esc(p.repeat_until || lastSchoolDay())}"></label>
         </div>
         <label class="field"><span>Where <small>(optional)</small></span><input class="input" name="location" maxlength="200" value="${esc(p.location || '')}" placeholder="e.g. Morley Library"></label>
-        <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input" name="pickup_dropoff" maxlength="300" rows="2" style="min-height:0" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
+        <label class="field"><span>Drop-off / pickup <small>(optional)</small></span><textarea class="input input-compact" name="pickup_dropoff" maxlength="300" rows="2" placeholder="e.g. East doors at 8:45, pickup at 2:30">${esc(p.pickup_dropoff || '')}</textarea></label>
         <div class="row2">
-        <label class="check-row" style="display:flex;gap:10px;align-items:center;margin:0 0 12px"><input type="checkbox" name="ask_going" ${p.ask_going ? 'checked' : ''}><span><strong>Ask who’s going</strong> <small style="color:var(--ink-2)">(moms tap I’m going; only yeses are shown)</small></span></label>
+        <label class="check-row"><input type="checkbox" name="ask_going" ${p.ask_going ? 'checked' : ''}><span><strong>Ask who’s going</strong> <small class="text-2">(moms tap I’m going; only yeses are shown)</small></span></label>
           <label class="field"><span>Link <small>(optional)</small></span><input class="input" name="link" type="url" inputmode="url" autocapitalize="off" maxlength="500" value="${esc(p.link || '')}" placeholder="https://…"></label>
           <label class="field"><span>Button says <small>(optional)</small></span><input class="input" name="link_label" maxlength="30" value="${esc(p.link_label || '')}" placeholder="e.g. Donate"></label>
         </div>
         <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What to bring, sign-up links, anything else">${esc(p.details || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${editing ? 'Save changes' : 'Post event'}</button>
-          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${cancelBtn()}
           ${editing && canEdit(editing) ? `<button class="btn btn-danger" type="button" data-action="del-event" data-id="${esc(editing.id)}">Delete this event</button>` : ''}
         </div>
       </form>`, async (fd) => {
@@ -1230,7 +1236,7 @@
           <div class="spell-head">
             <div>
               ${next ? `<span class="chip chip-volunteer">Up next${countdown ? ' · ' + esc(countdown) : ''}</span>` : ''}
-              <p class="spell-date" style="margin-top:${next ? '8px' : '0'}">${esc(headline)}</p>
+              <p class="spell-date ${next ? 'mt-8' : 'mt-0'}">${esc(headline)}</p>
               ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
             </div>
             <button class="btn btn-ghost btn-small" data-action="edit-spell" data-id="${esc(s.id)}">${ICON.edit} Edit</button>
@@ -1286,13 +1292,13 @@
         <label class="field"><span>Words</span><textarea class="input" name="words" maxlength="2000" placeholder="Separated by commas or one per line">${esc(words)}</textarea></label>
         <label class="field"><span>Challenge words <small>(optional)</small></span><input class="input" name="challenge_words" maxlength="500" value="${esc(challenge)}" placeholder="e.g. neighbor, celebrate"></label>
         <div class="field"><span>Photo of the sheet <small>(optional)</small></span>
-          ${editing && editing.photo_path ? '<p class="hint" style="margin:0 0 8px">A new photo replaces the current one.</p>' : ''}
+          ${editing && editing.photo_path ? '<p class="hint hint-photo">A new photo replaces the current one.</p>' : ''}
           <div id="photoSlot">${attached ? `<div class="attached">📷 Photo attached <button type="button" class="link-btn inline" data-action="drop-photo">Remove</button></div>` : '<input class="input" type="file" name="photo" accept="image/*">'}</div>
         </div>
         <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="1000" placeholder="Anything else from the sheet">${esc(p.notes || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${editing ? 'Save changes' : 'Post list'}</button>
-          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${cancelBtn()}
           ${editing && canEdit(editing) ? `<button class="btn btn-danger" type="button" data-action="del-spell" data-id="${esc(editing.id)}">Delete this list</button>` : ''}
         </div>
       </form>`, async (fd) => {
@@ -1352,8 +1358,8 @@
     const ids = hiddenIds();
     const list = state.events.filter((e) => ids.has(String(e.id)));
     openSheet(`<h2>Hidden cards</h2>
-      <p class="sub" style="color:var(--ink-2);margin:-8px 0 12px">Only hidden on this phone. Tap Show to bring one back.</p>
-      ${list.length ? list.map((e) => `<div class="frow"><div class="frow-name" style="cursor:default">${esc(e.title)}<br><small style="font-weight:600;color:var(--ink-2)">${esc(whenText(e))}</small></div><button class="pin-btn" data-action="unhide" data-id="${esc(e.id)}">Show</button></div>`).join('') : '<p>Nothing hidden.</p>'}
+      ${subLead(`Only hidden on this phone. Tap Show to bring one back.`)}
+      ${list.length ? list.map((e) => `<div class="frow"><div class="frow-name frow-name-static">${esc(e.title)}<br><small class="frow-when">${esc(whenText(e))}</small></div><button class="pin-btn" data-action="unhide" data-id="${esc(e.id)}">Show</button></div>`).join('') : '<p>Nothing hidden.</p>'}
       <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Done</button></div>`);
   }
   const PINCH_KEY = 'mm.pinchZoom';
@@ -1480,7 +1486,7 @@
         <article class="card sp-room ${c.id === myId ? 'mine' : ''}">
           <div class="spell-head">
             <h3 class="sp-name">${esc(c.name)}${c.id === myId ? ' <span class="chip chip-volunteer">My class</span>' : ''}</h3>
-            <div class="actions" style="margin:0">
+            <div class="actions actions-flush">
               <button class="btn btn-ghost btn-small" data-action="edit-class" data-id="${esc(c.id)}">${ICON.edit} Edit</button>
             </div>
           </div>
@@ -1515,7 +1521,7 @@
       <h2>${esc(c.name)}’s day number</h2>
       <p class="qa-sub">${esc(dayLabel(d))}${cur ? `: Day ${cur}` : ''}</p>
       <div class="sp-ask-btns light">${ROT.map((n) => `<button type="button" class="sp-num ${String(cur) === n ? 'on' : ''}" data-action="set-day" data-class="${esc(c.id)}" data-date="${isoDate(d)}" data-day="${n}">Day ${n}</button>`).join('')}</div>
-      <div class="sheet-actions" style="margin-top:16px"><button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button></div>`);
+      <div class="sheet-actions mt-16">${cancelBtn()}</div>`);
   }
 
   function extrasSheet() {
@@ -1530,7 +1536,7 @@
         </div>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Save on this phone</button>
-          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${cancelBtn()}
         </div>
       </form>`, async (fd) => {
       setExtras({ label: fd.get('label').trim() || 'Enrichment', days: fd.getAll('days') });
@@ -1573,7 +1579,7 @@
         <label class="field"><span>Notes <small>(optional)</small></span><textarea class="input" name="notes" maxlength="500">${esc((p.notes ?? (existing && existing.notes)) || '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Save specials</button>
-          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${cancelBtn()}
           ${existing && canEdit(existing) ? `<button class="btn btn-danger" type="button" data-action="del-class" data-id="${esc(existing.id)}">Delete this class</button>` : ''}
         </div>
       </form>`, async (fd) => {
@@ -1611,7 +1617,7 @@
         </div>` : ''}
       <textarea id="qaText" class="input qa-text" placeholder="${canTalk ? 'Or type it here…' : 'Type it here, or use the 🎤 on your keyboard…'}"></textarea>
       ${navigator.clipboard && navigator.clipboard.readText ? '<button type="button" class="btn btn-ghost btn-small qa-paste" data-action="qa-paste">Paste a text</button>' : ''}
-      <button type="button" class="btn btn-primary" data-action="qa-go" style="margin-top:12px">Fill it in</button>
+      <button type="button" class="btn btn-primary mt-12" data-action="qa-go">Fill it in</button>
       <div class="qa-or"><span>or</span></div>
       <label class="btn btn-yellow qa-photo">${ICON.camera} Snap the paper
         <input type="file" id="qaPhoto" accept="image/*" hidden>
@@ -1971,13 +1977,13 @@
             <span class="linkrow-go" aria-hidden="true">${ICON.link}</span>
           </a>`).join('')}`).join('')}
       <p class="section-label">The group</p>
-      <button class="card linkrow slim" data-action="tab" data-tab="members" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
+      <button class="card linkrow linkrow-btn slim" data-action="tab" data-tab="members">
         <span class="linkrow-icon" aria-hidden="true">\uD83D\uDC6D</span>
         <span class="linkrow-text"><strong>Group members</strong></span>
         <span class="linkrow-go" aria-hidden="true">\u203A</span>
       </button>
       <p class="section-label">Help make this better</p>
-      <button class="card linkrow" data-action="feedback" style="width:100%;text-align:left;border:0;font:inherit;color:inherit;cursor:pointer">
+      <button class="card linkrow linkrow-btn" data-action="feedback">
         <span class="linkrow-icon" aria-hidden="true">\uD83D\uDCA1</span>
         <span class="linkrow-text"><strong>Ideas &amp; bug reports</strong><small>Goes straight to Miranda</small></span>
         <span class="linkrow-go" aria-hidden="true">\u203A</span>
@@ -1987,10 +1993,10 @@
   function membersView() {
     const admin = state.me.is_admin;
     return `
-      <button class="link-btn" data-action="tab" data-tab="links" style="margin:0 0 8px">\u2039 Links</button>
+      <button class="link-btn link-btn-back" data-action="tab" data-tab="links">\u2039 Links</button>
       <div class="page-head"><div><h2>Members</h2><p>${state.members.length} members</p></div></div>
       ${admin ? `` : ''}
-      <div class="card" style="padding:4px 16px">
+      <div class="card card-list">
         ${state.members.map((m) => `
           <div class="member">
             <span class="ava">${esc(initials(m.display_name || m.email))}</span>
@@ -2011,7 +2017,7 @@
         
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">Add to the group</button>
-          <button class="btn btn-ghost" type="button" data-action="close-sheet">Cancel</button>
+          ${cancelBtn()}
         </div>
       </form>`, async (fd) => {
       const email = fd.get('email').trim().toLowerCase();
@@ -2034,7 +2040,7 @@
     feedbackKind = 'idea';
     openSheet(`
       <h2>Tell Miranda</h2>
-      <div class="chips" id="fbKinds" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="chips chips-wrap" id="fbKinds">
         <button type="button" class="fb-chip on" data-action="fb-kind" data-kind="idea">💡 Idea</button>
         <button type="button" class="fb-chip" data-action="fb-kind" data-kind="bug">🐞 Bug</button>
         <button type="button" class="fb-chip" data-action="fb-kind" data-kind="other">💬 Other</button>
@@ -2045,8 +2051,8 @@
           <p id="micStatus">Tap to talk</p>
         </div>` : ''}
       <textarea id="qaText" class="input qa-text" placeholder="What would make this app better? Or what went wrong?"></textarea>
-      <button type="button" class="btn btn-primary" data-action="fb-send" style="margin-top:12px">Send</button>
-      <button type="button" class="btn btn-ghost" data-action="close-sheet" style="margin-top:8px">Cancel</button>
+      <button type="button" class="btn btn-primary mt-12" data-action="fb-send">Send</button>
+      ${cancelBtn('mt-8')}
     `);
   }
 
@@ -2054,19 +2060,19 @@
     let install = '';
     if (!isStandalone()) {
       install = isIOS()
-        ? `<div class="card" style="background:var(--yellow-soft);box-shadow:none"><strong>Put Morley Moms on your home screen</strong>
+        ? `<div class="card card-flat-yellow"><strong>Put Morley Moms on your home screen</strong>
             <ol class="install-steps"><li>Open this page in <strong>Safari</strong>.</li><li>Tap the <strong>Share</strong> button (square with an arrow).</li><li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li></ol></div>`
         : deferredInstall
-          ? `<button class="btn btn-yellow" data-action="install" style="margin-bottom:12px">Install Morley Moms on this phone</button>`
-          : `<div class="card" style="background:var(--yellow-soft);box-shadow:none"><strong>Put Morley Moms on your home screen</strong>
+          ? `<button class="btn btn-yellow mb-12" data-action="install">Install Morley Moms on this phone</button>`
+          : `<div class="card card-flat-yellow"><strong>Put Morley Moms on your home screen</strong>
             <ol class="install-steps"><li>In Chrome, tap the <strong>⋮</strong> menu.</li><li>Tap <strong>Add to Home screen</strong> or <strong>Install app</strong>.</li></ol></div>`;
     }
     openSheet(`
       <h2>${esc(state.me.display_name || 'Your account')}</h2>
-      <p class="sub" style="color:var(--ink-2);margin:-8px 0 16px">${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}</p>
+      ${subLead(`${esc(state.me.email)}${state.me.is_admin ? ' · Admin' : ''}`, 'sub-lead-16')}
       ${install}
-      <label class="check-row" style="display:flex;gap:10px;align-items:center;margin:0 0 12px"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
-      <p class="sub" style="color:var(--ink-2);font-size:13px;margin:0 0 12px">App version ${APP_VERSION}</p>
+      <label class="check-row"><input type="checkbox" id="pinchZoom" ${pinchOn() ? 'checked' : ''}><span>Allow pinch to zoom</span></label>
+      <p class="sub sub-meta">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
         <button class="btn btn-ghost" data-action="signout">Sign out</button>
         <button class="btn btn-ghost" data-action="close-sheet">Close</button>
