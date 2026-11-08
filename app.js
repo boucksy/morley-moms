@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 96;
+  const APP_VERSION = 97;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1046,7 +1046,9 @@
   let recPhotoGone = false;
   function recCard(r) {
     const link = cleanLink(r.link), c = recCat(r.category), canE = canEdit(r);
-    return `<article class="card rec">
+    return `<article class="card rec ${r.photo_path ? 'has-thumb' : ''}">
+      ${r.photo_path ? `<div class="rec-thumb"><div class="photo-loading" data-photo="${esc(r.photo_path)}" data-alt="${esc('Photo for ' + r.title)}"></div></div>` : ''}
+      <div class="rec-main">
       <div class="plan-head">
         <h3><span aria-hidden="true">${c[1]}</span> ${esc(r.title)}</h3>
         <div class="plan-tools">
@@ -1056,7 +1058,7 @@
       </div>
       <p class="meta"><span>${esc(c[2])} · Recommended by ${esc(firstName(r.created_by_name) || 'a mom')}</span></p>
       ${r.notes ? `<p class="details">${linkify(r.notes)}</p>` : ''}
-      ${r.photo_path ? `<div class="photo-loading" data-photo="${esc(r.photo_path)}" data-alt="${esc('Photo for ' + r.title)}">Loading photo…</div>` : ''}
+      </div>
     </article>`;
   }
   function recsView() {
@@ -1098,7 +1100,7 @@
       let title = fd.get('title').trim();
       if (!title && notes) title = notes.split(/\s+/).slice(0, 6).join(' ');
       if (!title) throw new Error('Add a name or say a few words about it.');
-      const raw = fd.get('photo'), file = raw && raw.size > 0 ? await shrinkImage(raw) : null;
+      const raw = fd.get('photo'), file = raw && raw.size > 0 ? await shrinkImage(raw, 1000, 0.72) : null;
       const row = { title: title.slice(0, 120), category: fd.get('category'), notes: notes || null, link: cleanLink(fd.get('link')) || null };
       if (r) await api.updateRec(r.id, row, file); else await api.addRec(row, file);
       state.tab = 'recs'; renderTabs(); toast(r ? 'Updated' : 'Recommendation added');
@@ -1441,15 +1443,15 @@
     });
   }
 
-  async function shrinkImage(file, max = 1600) {
+  async function shrinkImage(file, max = 1600, q = 0.82) {
     try {
       const bmp = await createImageBitmap(file);
       const scale = Math.min(1, max / Math.max(bmp.width, bmp.height));
       const canvas = document.createElement('canvas');
       canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
       canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
-      const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', 0.82));
-      return blob ? new File([blob], 'list.jpg', { type: 'image/jpeg' }) : file;
+      const blob = await new Promise((r) => canvas.toBlob(r, 'image/jpeg', q));
+      return blob && blob.size < file.size ? new File([blob], 'list.jpg', { type: 'image/jpeg' }) : file;
     } catch { return file; }
   }
 
@@ -2299,7 +2301,11 @@
     wrap.className = 'sheet-backdrop';
     wrap.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" tabindex="-1"><div class="grab" aria-hidden="true"></div>${html}</div>`;
     labelSheet(wrap.querySelector('.sheet'));
-    wrap.addEventListener('click', (e) => { if (e.target === wrap) { stopMic(); closeSheet(); } });
+    // Don't lose typing to a stray swipe or tap outside: remember the starting values and refuse those dismissals once edited.
+    const fields = () => [...wrap.querySelectorAll('input:not([type=radio]):not([type=checkbox]), textarea, select')];
+    const start = fields().map((n) => n.value);
+    wrap._dirty = () => fields().some((n, i) => n.value !== (start[i] === undefined ? '' : start[i]));
+    wrap.addEventListener('click', (e) => { if (e.target === wrap) { if (wrap._dirty()) { toast('Tap Cancel to discard what you typed.'); return; } stopMic(); closeSheet(); } });
     document.body.appendChild(wrap);
     document.body.style.overflow = 'hidden';
     wrap.addEventListener('keydown', (e) => {
@@ -2322,7 +2328,8 @@
       sh.addEventListener('touchend', () => {
         if (y0 === null) return;
         sh.style.transition = 'transform .2s ease';
-        if (dy > 110 && sh.scrollTop <= 0) { sh.style.transform = 'translateY(100%)'; setTimeout(() => { stopMic(); closeSheet(); }, 180); }
+        if (dy > 110 && sh.scrollTop <= 0 && wrap._dirty()) { toast('Tap Cancel to discard what you typed.'); sh.style.transform = ''; }
+        else if (dy > 110 && sh.scrollTop <= 0) { sh.style.transform = 'translateY(100%)'; setTimeout(() => { stopMic(); closeSheet(); }, 180); }
         else sh.style.transform = '';
         y0 = null;
       });
