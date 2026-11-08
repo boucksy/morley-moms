@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 95;
+  const APP_VERSION = 96;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -47,6 +47,7 @@
   }
 
   const ICON = {
+    heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-8-4.6-8-10.4A4.6 4.6 0 0 1 12 7.3a4.6 4.6 0 0 1 8 2.8c0 5.8-8 10.4-8 10.4z"/></svg>',
     calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>',
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/></svg>',
     bulb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>',
@@ -89,7 +90,7 @@
         }),
       ],
       anchors: [],
-      going: [], plans: [], planResponses: [],
+      going: [], plans: [], planResponses: [], recs: [],
       classrooms: (window.MM_DEMO_CLASSES || []).map((name, i) => ({ id: `class${i}`, name, schedule: {}, notes: null, created_by: 'u-miranda', created_by_name: 'Miranda' })),
       spelling: (window.MM_DEMO_SPELLING || []).map((sp, i) => ({ id: `spell${i}`, title: null, notes: null, photo_path: null, ...sp, created_by: 'u-miranda', created_by_name: 'Miranda' })),
     };
@@ -126,6 +127,10 @@
       async addPlan(row) { db.plans.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(); },
       async updatePlan(id, row) { Object.assign(db.plans.find((p) => p.id === id), row); return delay(); },
       async deletePlan(id) { db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
+      async listRecs() { return delay(db.recs.map((r) => ({ ...r }))); },
+      async addRec(row, file) { db.recs.push({ ...row, id: uid(), photo_path: file ? URL.createObjectURL(file) : null, created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(); },
+      async updateRec(id, row, file) { if (file) row.photo_path = URL.createObjectURL(file); Object.assign(db.recs.find((r) => r.id === id), row); return delay(); },
+      async deleteRec(row) { db.recs = db.recs.filter((r) => r.id !== row.id); return delay(); },
       async listPlanResponses() { return delay(db.planResponses.map((r) => ({ ...r }))); },
       async setPlanStatus(planId, status, me) {
         db.planResponses = db.planResponses.filter((r) => !(r.plan_id === planId && r.member_id === me.id));
@@ -207,6 +212,27 @@
       async addPlan(row) { ok(await sb.from('plans').insert(row)); },
       async updatePlan(id, row) { ok(await sb.from('plans').update(row).eq('id', id)); },
       async deletePlan(id) { ok(await sb.from('plans').delete().eq('id', id)); },
+      async listRecs() { return ok(await sb.from('recs').select('*').order('created_at', { ascending: false })); },
+      async addRec(row, file) {
+        if (file) {
+          const path = `recs/${uid()}.jpg`;
+          ok(await sb.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false }));
+          row.photo_path = path;
+        }
+        ok(await sb.from('recs').insert(row));
+      },
+      async updateRec(id, row, file) {
+        if (file) {
+          const path = `recs/${uid()}.jpg`;
+          ok(await sb.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false }));
+          row.photo_path = path;
+        }
+        ok(await sb.from('recs').update(row).eq('id', id));
+      },
+      async deleteRec(row) {
+        if (row.photo_path) await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path]);
+        ok(await sb.from('recs').delete().eq('id', row.id));
+      },
       async listPlanResponses() { return ok(await sb.from('plan_responses').select('*')); },
       async setPlanStatus(planId, status, me) {
         if (!status) ok(await sb.from('plan_responses').delete().eq('plan_id', planId).eq('member_id', me.id));
@@ -329,6 +355,7 @@
     anchors: [],
     going: [],
     plans: [],
+    recs: [],
     planResponses: [],
     signin: { step: 'email', email: '' },
   };
@@ -522,6 +549,7 @@
       { id: 'events', label: 'Events', icon: ICON.calendar },
       { id: 'spelling', label: 'Spelling', icon: ICON.book },
       { id: 'plans', label: 'Plans', icon: ICON.bulb },
+      { id: 'recs', label: 'Recs', icon: ICON.heart },
       { id: 'specials', label: 'Specials', icon: ICON.star },
       { id: 'links', label: 'Links', icon: ICON.link },
     ];
@@ -547,18 +575,19 @@
   const spRec = (x) => [x.test_date || '', x.title || '', sigHash([x.words, x.challenge_words, x.classroom_id])];
   const plRec = (p) => [p.title, sigHash([p.details, p.link, p.plan_date])];
   const clRec = (c) => [c.name, sigHash([c.schedule, c.notes])];
-  const RECS = { ev: evRec, sp: spRec, pl: plRec, cl: clRec };
-  const LISTS = { ev: () => state.events, sp: () => state.spelling, pl: () => state.plans, cl: () => state.classrooms };
+  const rcRec = (r) => [r.title, sigHash([r.notes, r.link, r.category, r.photo_path])];
+  const RECS = { ev: evRec, sp: spRec, pl: plRec, cl: clRec, rc: rcRec };
+  const LISTS = { ev: () => state.events, sp: () => state.spelling, pl: () => state.plans, cl: () => state.classrooms, rc: () => state.recs };
   function buildSnapshot() {
-    const o = { v: 1, ev: {}, sp: {}, pl: {}, cl: {}, go: {}, pr: {} };
+    const o = { v: 1, ev: {}, sp: {}, pl: {}, cl: {}, rc: {}, go: {}, pr: {} };
     Object.keys(RECS).forEach((k) => LISTS[k]().forEach((x) => { o[k][x.id] = RECS[k](x); }));
     state.going.forEach((g) => { if (g.going) o.go[g.event_id + '|' + g.member_id] = 1; });
     state.planResponses.forEach((r) => { o.pr[r.plan_id + '|' + r.member_id] = r.status; });
     return o;
   }
   // Things I changed myself shouldn't be announced back to me.
-  const mineTouched = { ev: new Set(), sp: new Set(), pl: new Set(), cl: new Set() };
-  [['updateEvent', 'ev', 0], ['deleteEvent', 'ev', 0], ['updateSpelling', 'sp', 0], ['deleteSpelling', 'sp', 'row'], ['updatePlan', 'pl', 0], ['deletePlan', 'pl', 0], ['saveClassroom', 'cl', 1], ['deleteClassroom', 'cl', 0]].forEach(([fn, kind, at]) => {
+  const mineTouched = { ev: new Set(), sp: new Set(), pl: new Set(), cl: new Set(), rc: new Set() };
+  [['updateEvent', 'ev', 0], ['deleteEvent', 'ev', 0], ['updateSpelling', 'sp', 0], ['deleteSpelling', 'sp', 'row'], ['updatePlan', 'pl', 0], ['updateRec', 'rc', 0], ['deleteRec', 'rc', 'row'], ['deletePlan', 'pl', 0], ['saveClassroom', 'cl', 1], ['deleteClassroom', 'cl', 0]].forEach(([fn, kind, at]) => {
     const orig = api[fn]; if (!orig) return;
     api[fn] = async function (...a) { const r = await orig.apply(this, a); const id = at === 'row' ? (a[0] && a[0].id) : a[at]; if (id) mineTouched[kind].add(String(id)); return r; };
   });
@@ -607,6 +636,9 @@
       if (!old) { if (!mine(p)) lines.push({ i: '💡', t: `${firstName(p.created_by_name)} added a plan: ${p.title}` }); return; }
       if (plRec(p).join('|') !== old.join('|')) lines.push({ i: '✏️', t: `Plan updated: ${p.title}` });
     });
+    const newRecs = state.recs.filter((r) => !snap.rc[r.id] && !mine(r));
+    if (snap.rc && newRecs.length > 3) lines.push({ i: '💛', t: `${newRecs.length} new recommendations` });
+    else if (snap.rc) newRecs.forEach((r) => lines.push({ i: '💛', t: `${firstName(r.created_by_name)} recommended ${r.title}` }));
     state.classrooms.forEach((c) => {
       const old = snap.cl[c.id]; if (!old || clRec(c).join('|') === old.join('|')) return;
       lines.push({ i: '⭐', t: `Specials updated for ${c.name}` });
@@ -642,6 +674,9 @@
     if (diff === 1) return 'Yesterday';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+  // One-time "new feature" lines, shown once per phone in the What's new sheet.
+  const FEATURE_NEWS = [{ id: 'recs-tab', i: '💛', t: 'New: Recommendations tab. Share doctors, books, food and more.' }];
+  const featSeen = () => readJson('mm.feat', []);
   function maybeAnnounce() {
     if (!state.me || document.querySelector('.sheet-backdrop')) return;
     const snap = readSeen();
@@ -652,6 +687,8 @@
     let last = ''; try { last = localStorage.getItem('mm.lastNews') || ''; } catch {}
     if (last === day) return;
     const lines = whatChanged(snap);
+    const feats = FEATURE_NEWS.filter((f) => !featSeen().includes(f.id));
+    feats.forEach((f) => lines.unshift({ i: f.i, t: f.t }));
     if (!lines.length) { writeSeen(buildSnapshot()); return; }
     try { localStorage.setItem('mm.lastNews', day); } catch {}
     const shown = lines.slice(0, 14), more = lines.length - shown.length;
@@ -668,26 +705,27 @@
     let loaded = false;
     try {
       const soft = (p) => p.catch(() => null);   // new tables may not exist until add-plans.sql has been run
-      const [events, spelling, members, classrooms, anchors, going, plans, planResponses] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses())]);
+      const [events, spelling, members, classrooms, anchors, going, plans, planResponses, recs] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses()), soft(api.listRecs())]);
       Object.assign(state, { events, spelling, members, classrooms, anchors });
       if (going) state.going = going;
       if (state.me && state.me.is_admin) { const seen = await soft(api.listSeen()); if (seen) state.seen = seen; }
       if (plans) state.plans = plans;
       if (planResponses) state.planResponses = planResponses;
+      if (recs) state.recs = recs;
       syncMine(); loaded = true;
     } catch (ex) {
       toast('Couldn\u2019t load the latest. Check your connection.');
     }
     // Coming back to the app: if nothing changed, don't redraw at all (no jump to the top).
     // Otherwise redraw but keep the scroll position.
-    const sig = loaded ? JSON.stringify([state.events, state.spelling, state.members, state.classrooms, state.anchors, state.going, state.plans, state.planResponses, state.seen]) : null;
+    const sig = loaded ? JSON.stringify([state.events, state.spelling, state.members, state.classrooms, state.anchors, state.going, state.plans, state.planResponses, state.recs, state.seen]) : null;
     const unchanged = opts.quiet && loaded && sig === lastSig;
     if (loaded) lastSig = sig;
     if (!unchanged) renderView({ keep: true });
     if (opts.announce && loaded) maybeAnnounce();
   }
 
-  const TAB_TITLES = { events: 'Events', spelling: 'Spelling', plans: 'Plans', specials: 'Specials', links: 'Links', members: 'Members' };
+  const TAB_TITLES = { events: 'Events', spelling: 'Spelling', plans: 'Plans', recs: 'Recommendations', specials: 'Specials', links: 'Links', members: 'Members' };
   // Re-rendering replaces the buttons, so remember which one had focus and put focus back on its twin.
   const focusKey = (el) => {
     if (!el || !el.dataset || !el.dataset.action) return null;
@@ -704,6 +742,7 @@
     if (state.tab === 'events') view.innerHTML = eventsView();
     if (state.tab === 'spelling') { view.innerHTML = spellingView(); loadPhotos(); }
     if (state.tab === 'plans') view.innerHTML = plansView();
+    if (state.tab === 'recs') { view.innerHTML = recsView(); loadPhotos(); }
     if (state.tab === 'specials') view.innerHTML = specialsView();
     if (state.tab === 'links') view.innerHTML = linksView();
     if (state.tab === 'members') view.innerHTML = membersView();
@@ -1000,6 +1039,70 @@
       <div class="page-head"><div><h2>Plans</h2></div></div>
       ${subLead(`Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.`, 'sub-lead-6')}
       ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans yet</p><p>Tap + to add something we might do together.</p></div>`}`;
+  }
+  // ---- recommendations ----
+  const REC_CATS = [['care', '🩺', 'Doctors & care'], ['books', '📚', 'Books'], ['food', '🍽️', 'Food'], ['activities', '🎨', 'Activities'], ['shops', '🛍️', 'Shops & services'], ['other', '✨', 'Other']];
+  const recCat = (id) => REC_CATS.find((c) => c[0] === id) || REC_CATS[REC_CATS.length - 1];
+  let recPhotoGone = false;
+  function recCard(r) {
+    const link = cleanLink(r.link), c = recCat(r.category), canE = canEdit(r);
+    return `<article class="card rec">
+      <div class="plan-head">
+        <h3><span aria-hidden="true">${c[1]}</span> ${esc(r.title)}</h3>
+        <div class="plan-tools">
+          ${link ? `<a class="icon-btn icon-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="Open link (${esc(linkHost(link))})" title="${esc(linkHost(link))}">${ICON.link}</a>` : ''}
+          ${canE ? `<button class="icon-btn" data-action="edit-rec" data-id="${esc(r.id)}" aria-label="${esc('Edit ' + r.title)}" title="Edit">${ICON.edit}</button>` : ''}
+        </div>
+      </div>
+      <p class="meta"><span>${esc(c[2])} · Recommended by ${esc(firstName(r.created_by_name) || 'a mom')}</span></p>
+      ${r.notes ? `<p class="details">${linkify(r.notes)}</p>` : ''}
+      ${r.photo_path ? `<div class="photo-loading" data-photo="${esc(r.photo_path)}" data-alt="${esc('Photo for ' + r.title)}">Loading photo…</div>` : ''}
+    </article>`;
+  }
+  function recsView() {
+    const cat = state.recCat || 'all';
+    const list = [...state.recs].filter((r) => cat === 'all' || recCat(r.category)[0] === cat).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const pill = (id, label) => `<button class="filter ${cat === id ? 'on' : ''}" data-action="rec-cat" data-cat="${id}" aria-pressed="${cat === id}">${label}</button>`;
+    return `
+      <div class="page-head"><div><h2>Recommendations</h2></div></div>
+      ${subLead(`Doctors, books, food, anything you’d tell a friend about. Tap + to add yours.`, 'sub-lead-6')}
+      <div class="filters" role="group" aria-label="Filter by type">${pill('all', 'All')}${REC_CATS.map((c) => pill(c[0], c[1] + ' ' + c[2])).join('')}</div>
+      ${list.length ? list.map(recCard).join('') : `<div class="card empty"><p class="big">Nothing here yet</p><p>Tap + to recommend something.</p></div>`}`;
+  }
+  function recSheet(editId) {
+    const r = editId ? state.recs.find((x) => String(x.id) === String(editId)) : null;
+    const canTalk = !!SpeechRec || canRecord;
+    recPhotoGone = false;
+    openSheet(`
+      <h2>${r ? 'Edit recommendation' : 'Recommend something'}</h2>
+      <form id="sheetForm">
+        <label class="field"><span>Type</span><select class="input" name="category">${REC_CATS.map((c) => `<option value="${c[0]}" ${r && recCat(r.category)[0] === c[0] ? 'selected' : ''}>${c[1]} ${esc(c[2])}</option>`).join('')}</select></label>
+        <label class="field"><span>What is it?</span><input class="input" name="title" maxlength="120" value="${esc(r ? r.title : '')}" placeholder="e.g. Dr. Smith, a book title, a restaurant"></label>
+        ${canTalk ? `<div class="qa-mic">
+          <button type="button" class="mic" data-action="mic" aria-label="Talk your note" aria-pressed="false" aria-describedby="micStatus">${ICON.mic}</button>
+          <p id="micStatus" role="status" aria-live="polite">Tap to talk, or type below</p>
+        </div>` : ''}
+        <label class="field"><span>Why do you recommend it?</span><textarea id="qaText" class="input qa-text" name="notes" maxlength="2000" placeholder="What you liked, who it’s good for…">${esc(r && r.notes ? r.notes : '')}</textarea></label>
+        <label class="field"><span>Link <small>(optional)</small></span><input class="input" name="link" type="url" inputmode="url" autocapitalize="off" maxlength="500" value="${esc(r && r.link ? r.link : '')}" placeholder="https://…"></label>
+        <div class="field"><span>Photo <small>(optional)</small></span>
+          <div id="recPhotoSlot">${r && r.photo_path ? `<p class="sub">A photo is attached. <button type="button" class="link-btn" data-action="drop-rec-photo">Replace it</button></p>` : '<input class="input" type="file" name="photo" accept="image/*" aria-label="Photo">'}</div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn btn-primary" type="submit">${r ? 'Save changes' : 'Add recommendation'}</button>
+          ${cancelBtn()}
+          ${r ? `<button class="btn btn-danger" type="button" data-action="del-rec" data-id="${esc(r.id)}">Delete</button>` : ''}
+        </div>
+      </form>`, async (fd) => {
+      stopMic();
+      const notes = fd.get('notes').trim();
+      let title = fd.get('title').trim();
+      if (!title && notes) title = notes.split(/\s+/).slice(0, 6).join(' ');
+      if (!title) throw new Error('Add a name or say a few words about it.');
+      const raw = fd.get('photo'), file = raw && raw.size > 0 ? await shrinkImage(raw) : null;
+      const row = { title: title.slice(0, 120), category: fd.get('category'), notes: notes || null, link: cleanLink(fd.get('link')) || null };
+      if (r) await api.updateRec(r.id, row, file); else await api.addRec(row, file);
+      state.tab = 'recs'; renderTabs(); toast(r ? 'Updated' : 'Recommendation added');
+    });
   }
   function planSheet(editId) {
     const p = editId ? state.plans.find((x) => String(x.id) === String(editId)) : null;
@@ -1333,7 +1436,7 @@
       try {
         const url = await api.photoUrl(el.dataset.photo);
         if (!url) throw new Error('no url');
-        el.outerHTML = `<a class="photo-btn" href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="Photo of the spelling list"></a>`;
+        el.outerHTML = `<a class="photo-btn" href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(el.dataset.alt || 'Photo of the spelling list')}"></a>`;
       } catch { el.textContent = 'Photo unavailable'; }
     });
   }
@@ -2363,11 +2466,15 @@
       else if (a === 'hide-card') { const y = window.scrollY; hideCard(el.dataset.id); renderView(); window.scrollTo(0, y); toast('Hidden on this phone. Find it under \u201CHidden cards\u201D at the bottom.'); }
       else if (a === 'tab') { state.tab = el.dataset.tab; renderTabs(); renderView(); }
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
-      else if (a === 'ack-changes') { writeSeen(buildSnapshot()); closeSheet(); }
+      else if (a === 'ack-changes') { writeJson('mm.feat', FEATURE_NEWS.map((f) => f.id)); writeSeen(buildSnapshot()); closeSheet(); }
       else if (a === 'going') await setGoingFor(el.dataset.id, el.dataset.val);
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
+      else if (a === 'edit-rec') recSheet(el.dataset.id);
+      else if (a === 'rec-cat') { state.recCat = el.dataset.cat; renderView(); }
+      else if (a === 'drop-rec-photo') { recPhotoGone = true; const s = $('#recPhotoSlot'); if (s) s.innerHTML = '<input class="input" type="file" name="photo" accept="image/*" aria-label="Photo">'; }
+      else if (a === 'del-rec') { if (!confirm('Delete this recommendation for everyone?')) return; const r = state.recs.find((x) => String(x.id) === el.dataset.id); await api.deleteRec(r); closeSheet(); toast('Recommendation deleted'); await refresh(); }
       else if (a === 'filter-menu') filterSheet();
       else if (a === 'hidden-cards') hiddenSheet();
       else if (a === 'unhide') { unhideCard(el.dataset.id); hiddenSheet(); renderView({ keep: true }); }
@@ -2380,6 +2487,7 @@
       else if (a === 'add') {
         if (state.tab === 'members' && state.me.is_admin) addMemberSheet();
         else if (state.tab === 'plans') planSheet();
+        else if (state.tab === 'recs') recSheet();
         else if (state.tab !== 'members' && state.tab !== 'links') quickAddSheet();
       }
       else if (a === 'account') accountSheet();
