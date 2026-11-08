@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 97;
+  const APP_VERSION = 98;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1050,13 +1050,13 @@
       ${r.photo_path ? `<div class="rec-thumb"><div class="photo-loading" data-photo="${esc(r.photo_path)}" data-alt="${esc('Photo for ' + r.title)}"></div></div>` : ''}
       <div class="rec-main">
       <div class="plan-head">
-        <h3><span aria-hidden="true">${c[1]}</span> ${esc(r.title)}</h3>
+        <h3>${esc(r.title)}</h3>
         <div class="plan-tools">
           ${link ? `<a class="icon-btn icon-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="Open link (${esc(linkHost(link))})" title="${esc(linkHost(link))}">${ICON.link}</a>` : ''}
           ${canE ? `<button class="icon-btn" data-action="edit-rec" data-id="${esc(r.id)}" aria-label="${esc('Edit ' + r.title)}" title="Edit">${ICON.edit}</button>` : ''}
         </div>
       </div>
-      <p class="meta"><span>${esc(c[2])} · Recommended by ${esc(firstName(r.created_by_name) || 'a mom')}</span></p>
+      <p class="meta"><span><span aria-hidden="true">${c[1]}</span> ${esc(c[2])} · Recommended by ${esc(firstName(r.created_by_name) || 'a mom')}</span></p>
       ${r.notes ? `<p class="details">${linkify(r.notes)}</p>` : ''}
       </div>
     </article>`;
