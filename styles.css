@@ -905,3 +905,6 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .card.rec .details { margin-top: var(--space-1h); }
 .rec-vote { margin-top: var(--space-2h); }
 .rec-vote .rsvp-btn { width: auto; display: inline-flex; padding-inline: var(--space-3); }
+.card.rec .plan-head { align-items: center; }
+.card.rec .plan-head h3 { margin: 0; }
+.rec-plus { font-size: 1.3rem; font-weight: 700; line-height: 1; margin-right: var(--space-1h); }

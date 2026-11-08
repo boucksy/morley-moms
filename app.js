@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 100;
+  const APP_VERSION = 101;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1065,7 +1065,7 @@
     const votes = recVotesFor(r.id), mine = votes.some((v) => v.member_id === myId()), own = r.created_by === myId();
     const names = votes.map((v) => firstName(v.member_name)).sort();
     return `<div class="rec-vote">
-      ${own ? '' : `<button class="rsvp-btn ${mine ? 'yes' : ''}" data-action="rec-vote" data-id="${esc(r.id)}" aria-pressed="${mine}"><span class="box" aria-hidden="true">${mine ? '✓' : '+'}</span>I recommend it too</button>`}
+      ${own ? '' : `<button class="rsvp-btn ${mine ? 'yes' : ''}" data-action="rec-vote" data-id="${esc(r.id)}" aria-pressed="${mine}"><span class="rec-plus" aria-hidden="true">${mine ? '✓' : '+'}</span>I recommend it too</button>`}
       ${names.length ? `<p class="who-line"><strong>Also recommended by:</strong> ${esc(names.join(', '))}</p>` : ''}
     </div>`;
   }
