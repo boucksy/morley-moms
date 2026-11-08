@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 99;
+  const APP_VERSION = 100;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -649,8 +649,11 @@
       if (plRec(p).join('|') !== old.join('|')) lines.push({ i: '✏️', t: `Plan updated: ${p.title}` });
     });
     const newRecs = state.recs.filter((r) => !snap.rc[r.id] && !mine(r));
-    if (snap.rc && newRecs.length > 3) lines.push({ i: '💛', t: `${newRecs.length} new recommendations` });
-    else if (snap.rc) newRecs.forEach((r) => lines.push({ i: '💛', t: `${firstName(r.created_by_name)} recommended ${r.title}` }));
+    if (snap.rc && newRecs.length) {
+      const cats = [...new Set(newRecs.map((r) => recCat(r.category)[2]))];
+      const list = cats.length > 1 ? cats.slice(0, -1).join(', ') + ' and ' + cats[cats.length - 1] : cats[0];
+      lines.push({ i: '💛', t: `New recommendations added for ${list}` });
+    }
     state.classrooms.forEach((c) => {
       const old = snap.cl[c.id]; if (!old || clRec(c).join('|') === old.join('|')) return;
       lines.push({ i: '⭐', t: `Specials updated for ${c.name}` });
