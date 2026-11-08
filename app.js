@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 98;
+  const APP_VERSION = 99;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -90,7 +90,7 @@
         }),
       ],
       anchors: [],
-      going: [], plans: [], planResponses: [], recs: [],
+      going: [], plans: [], planResponses: [], recs: [], recVotes: [],
       classrooms: (window.MM_DEMO_CLASSES || []).map((name, i) => ({ id: `class${i}`, name, schedule: {}, notes: null, created_by: 'u-miranda', created_by_name: 'Miranda' })),
       spelling: (window.MM_DEMO_SPELLING || []).map((sp, i) => ({ id: `spell${i}`, title: null, notes: null, photo_path: null, ...sp, created_by: 'u-miranda', created_by_name: 'Miranda' })),
     };
@@ -128,6 +128,12 @@
       async updatePlan(id, row) { Object.assign(db.plans.find((p) => p.id === id), row); return delay(); },
       async deletePlan(id) { db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
       async listRecs() { return delay(db.recs.map((r) => ({ ...r }))); },
+      async listRecVotes() { return delay(db.recVotes.map((r) => ({ ...r }))); },
+      async setRecVote(recId, on, me) {
+        db.recVotes = db.recVotes.filter((v) => !(v.rec_id === recId && v.member_id === me.id));
+        if (on) db.recVotes.push({ rec_id: recId, member_id: me.id, member_name: me.name });
+        return delay();
+      },
       async addRec(row, file) { db.recs.push({ ...row, id: uid(), photo_path: file ? URL.createObjectURL(file) : null, created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(); },
       async updateRec(id, row, file) { if (file) row.photo_path = URL.createObjectURL(file); Object.assign(db.recs.find((r) => r.id === id), row); return delay(); },
       async deleteRec(row) { db.recs = db.recs.filter((r) => r.id !== row.id); return delay(); },
@@ -213,6 +219,11 @@
       async updatePlan(id, row) { ok(await sb.from('plans').update(row).eq('id', id)); },
       async deletePlan(id) { ok(await sb.from('plans').delete().eq('id', id)); },
       async listRecs() { return ok(await sb.from('recs').select('*').order('created_at', { ascending: false })); },
+      async listRecVotes() { return ok(await sb.from('rec_votes').select('*')); },
+      async setRecVote(recId, on, me) {
+        if (!on) ok(await sb.from('rec_votes').delete().eq('rec_id', recId).eq('member_id', me.id));
+        else ok(await sb.from('rec_votes').upsert({ rec_id: recId, member_id: me.id, member_name: me.name }, { onConflict: 'rec_id,member_id' }));
+      },
       async addRec(row, file) {
         if (file) {
           const path = `recs/${uid()}.jpg`;
@@ -356,6 +367,7 @@
     going: [],
     plans: [],
     recs: [],
+    recVotes: [],
     planResponses: [],
     signin: { step: 'email', email: '' },
   };
@@ -705,20 +717,21 @@
     let loaded = false;
     try {
       const soft = (p) => p.catch(() => null);   // new tables may not exist until add-plans.sql has been run
-      const [events, spelling, members, classrooms, anchors, going, plans, planResponses, recs] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses()), soft(api.listRecs())]);
+      const [events, spelling, members, classrooms, anchors, going, plans, planResponses, recs, recVotes] = await Promise.all([api.listEvents(), api.listSpelling(), api.listMembers(), api.listClassrooms(), api.listAnchors(), soft(api.listGoing()), soft(api.listPlans()), soft(api.listPlanResponses()), soft(api.listRecs()), soft(api.listRecVotes())]);
       Object.assign(state, { events, spelling, members, classrooms, anchors });
       if (going) state.going = going;
       if (state.me && state.me.is_admin) { const seen = await soft(api.listSeen()); if (seen) state.seen = seen; }
       if (plans) state.plans = plans;
       if (planResponses) state.planResponses = planResponses;
       if (recs) state.recs = recs;
+      if (recVotes) state.recVotes = recVotes;
       syncMine(); loaded = true;
     } catch (ex) {
       toast('Couldn\u2019t load the latest. Check your connection.');
     }
     // Coming back to the app: if nothing changed, don't redraw at all (no jump to the top).
     // Otherwise redraw but keep the scroll position.
-    const sig = loaded ? JSON.stringify([state.events, state.spelling, state.members, state.classrooms, state.anchors, state.going, state.plans, state.planResponses, state.recs, state.seen]) : null;
+    const sig = loaded ? JSON.stringify([state.events, state.spelling, state.members, state.classrooms, state.anchors, state.going, state.plans, state.planResponses, state.recs, state.recVotes, state.seen]) : null;
     const unchanged = opts.quiet && loaded && sig === lastSig;
     if (loaded) lastSig = sig;
     if (!unchanged) renderView({ keep: true });
@@ -1044,6 +1057,23 @@
   const REC_CATS = [['care', '🩺', 'Doctors & care'], ['books', '📚', 'Books'], ['food', '🍽️', 'Food'], ['activities', '🎨', 'Activities'], ['shops', '🛍️', 'Shops & services'], ['other', '✨', 'Other']];
   const recCat = (id) => REC_CATS.find((c) => c[0] === id) || REC_CATS[REC_CATS.length - 1];
   let recPhotoGone = false;
+  const recVotesFor = (id) => state.recVotes.filter((v) => String(v.rec_id) === String(id));
+  function recVoteLine(r) {
+    const votes = recVotesFor(r.id), mine = votes.some((v) => v.member_id === myId()), own = r.created_by === myId();
+    const names = votes.map((v) => firstName(v.member_name)).sort();
+    return `<div class="rec-vote">
+      ${own ? '' : `<button class="rsvp-btn ${mine ? 'yes' : ''}" data-action="rec-vote" data-id="${esc(r.id)}" aria-pressed="${mine}"><span class="box" aria-hidden="true">${mine ? '✓' : '+'}</span>I recommend it too</button>`}
+      ${names.length ? `<p class="who-line"><strong>Also recommended by:</strong> ${esc(names.join(', '))}</p>` : ''}
+    </div>`;
+  }
+  async function toggleRecVote(id) {
+    const on = !recVotesFor(id).some((v) => v.member_id === myId());
+    state.recVotes = state.recVotes.filter((v) => !(String(v.rec_id) === String(id) && v.member_id === myId()));
+    if (on) state.recVotes.push({ rec_id: id, member_id: myId(), member_name: myName() });
+    keepScroll(renderView);
+    try { await api.setRecVote(id, on, { id: myId(), name: myName() }); }
+    catch { toast('Couldn’t save that. Try again in a moment.'); }
+  }
   function recCard(r) {
     const link = cleanLink(r.link), c = recCat(r.category), canE = canEdit(r);
     return `<article class="card rec ${r.photo_path ? 'has-thumb' : ''}">
@@ -1058,6 +1088,7 @@
       </div>
       <p class="meta"><span><span aria-hidden="true">${c[1]}</span> ${esc(c[2])} · Recommended by ${esc(firstName(r.created_by_name) || 'a mom')}</span></p>
       ${r.notes ? `<p class="details">${linkify(r.notes)}</p>` : ''}
+      ${recVoteLine(r)}
       </div>
     </article>`;
   }
@@ -2478,6 +2509,7 @@
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
+      else if (a === 'rec-vote') await toggleRecVote(el.dataset.id);
       else if (a === 'edit-rec') recSheet(el.dataset.id);
       else if (a === 'rec-cat') { state.recCat = el.dataset.cat; renderView(); }
       else if (a === 'drop-rec-photo') { recPhotoGone = true; const s = $('#recPhotoSlot'); if (s) s.innerHTML = '<input class="input" type="file" name="photo" accept="image/*" aria-label="Photo">'; }

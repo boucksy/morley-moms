@@ -903,3 +903,5 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .rec-thumb .photo-btn { margin: 0; }
 .rec-thumb .photo-btn img { width: 72px; height: 72px; max-height: none; border-radius: var(--radius-md); }
 .card.rec .details { margin-top: var(--space-1h); }
+.rec-vote { margin-top: var(--space-2h); }
+.rec-vote .rsvp-btn { width: auto; display: inline-flex; padding-inline: var(--space-3); }
