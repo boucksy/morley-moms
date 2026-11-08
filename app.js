@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 101;
+  const APP_VERSION = 102;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -2514,7 +2514,7 @@
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
       else if (a === 'rec-vote') await toggleRecVote(el.dataset.id);
       else if (a === 'edit-rec') recSheet(el.dataset.id);
-      else if (a === 'rec-cat') { state.recCat = el.dataset.cat; renderView(); }
+      else if (a === 'rec-cat') { state.recCat = el.dataset.cat; const x = ($('.filters') || {}).scrollLeft || 0; keepScroll(renderView); const f = $('.filters'); if (f) f.scrollLeft = x; }
       else if (a === 'drop-rec-photo') { recPhotoGone = true; const s = $('#recPhotoSlot'); if (s) s.innerHTML = '<input class="input" type="file" name="photo" accept="image/*" aria-label="Photo">'; }
       else if (a === 'del-rec') { if (!confirm('Delete this recommendation for everyone?')) return; const r = state.recs.find((x) => String(x.id) === el.dataset.id); await api.deleteRec(r); closeSheet(); toast('Recommendation deleted'); await refresh(); }
       else if (a === 'filter-menu') filterSheet();
