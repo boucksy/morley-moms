@@ -908,3 +908,7 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .card.rec .plan-head { align-items: center; }
 .card.rec .plan-head h3 { margin: 0; }
 .rec-plus { font-size: 1.3rem; font-weight: 700; line-height: 1; margin-right: var(--space-1h); }
+.filter.more { display: inline-flex; align-items: center; gap: var(--space-1h); letter-spacing: 0; font-weight: 700; flex: 0 0 auto; }
+.filter.more svg { width: 1em; height: 1em; }
+.filter.more .caret { font-size: .8em; }
+.page-head .chip { align-self: center; }

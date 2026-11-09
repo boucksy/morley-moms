@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 104;
+  const APP_VERSION = 105;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -47,6 +47,7 @@
   }
 
   const ICON = {
+    filter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>',
     heart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-8-4.6-8-10.4A4.6 4.6 0 0 1 12 7.3a4.6 4.6 0 0 1 8 2.8c0 5.8-8 10.4-8 10.4z"/></svg>',
     calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>',
     book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M9 8h7M9 11.5h5"/></svg>',
@@ -897,7 +898,8 @@
     const today = startOfToday();
     const soonCutoff = new Date(today); soonCutoff.setDate(soonCutoff.getDate() + 3);
     const soon = d >= today && d <= soonCutoff;
-    const label = testLabel(isoDate(d));
+    const inThisWeek = isoDate(mondayOf(d)) === isoDate(mondayOf(today));
+    const label = inThisWeek ? '' : testLabel(isoDate(d));
     return `
       <article class="card event cat-spelling ">
         ${dateBadge(d, ev)}
@@ -1051,7 +1053,8 @@
     </article>`;
   }
   function plansView() {
-    const list = [...state.plans].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const todayIso = isoDate(startOfToday());
+    const list = state.plans.filter((p) => !p.plan_date || p.plan_date >= todayIso).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     return `
       <div class="page-head"><div><h2>Plans</h2></div></div>
       ${subLead(`Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.`, 'sub-lead-6')}
@@ -1099,11 +1102,12 @@
   function recsView() {
     const cat = state.recCat || 'all';
     const list = [...state.recs].filter((r) => cat === 'all' || recCat(r.category)[0] === cat).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const menu = `<button class="filter more ${cat !== 'all' ? 'on' : ''}" data-action="rec-filter-menu" aria-haspopup="dialog" aria-label="${cat !== 'all' ? esc(recCat(cat)[2]) + ' filter on, choose a filter' : 'Choose a filter'}">${ICON.filter}<span>${cat !== 'all' ? esc(recCat(cat)[1] + ' ' + recCat(cat)[2]) : 'Filter'}</span><span class="caret" aria-hidden="true">\u25BE</span></button>`;
     const pill = (id, label) => `<button class="filter ${cat === id ? 'on' : ''}" data-action="rec-cat" data-cat="${id}" aria-pressed="${cat === id}">${label}</button>`;
     return `
       <div class="page-head"><div><h2>Recommendations</h2></div></div>
       ${subLead(`Doctors, books, food, anything you’d tell a friend about. Tap + to add yours.`, 'sub-lead-6')}
-      <div class="filters" role="group" aria-label="Filter by type">${pill('all', 'All')}${REC_CATS.map((c) => pill(c[0], c[1] + ' ' + c[2])).join('')}</div>
+      <div class="filters" role="group" aria-label="Filter by type">${menu}${pill('all', 'All')}</div>
       ${list.length ? list.map(recCard).join('') : `<div class="card empty"><p class="big">Nothing here yet</p><p>Tap + to recommend something.</p></div>`}`;
   }
   function recSheet(editId) {
@@ -1178,8 +1182,8 @@
     const pins = filterOrder().filter((id) => filterPins().includes(id));
     const pill = (id) => `<button class="filter ${state.filter === id ? 'on' : ''}" data-action="filter" data-filter="${id}" aria-pressed="${state.filter === id}">${filterLabel(id)}</button>`;
     const hidden = state.filter !== 'all' && !pins.includes(state.filter);
-    return pill('all') + pins.map(pill).join('') +
-      `<button class="filter more ${hidden ? 'on' : ''}" data-action="filter-menu" aria-haspopup="dialog" aria-label="${hidden ? esc(filterLabel(state.filter)) + ' filter on, all filters' : 'All filters'}">${hidden ? esc(filterLabel(state.filter)) + ' ' : ''}\u22EF</button>`;
+    const menu = `<button class="filter more ${hidden ? 'on' : ''}" data-action="filter-menu" aria-haspopup="dialog" aria-label="${hidden ? esc(filterLabel(state.filter)) + ' filter on, choose a filter' : 'Choose a filter'}">${ICON.filter}<span>${hidden ? esc(filterLabel(state.filter)) : 'Filter'}</span><span class="caret" aria-hidden="true">\u25BE</span></button>`;
+    return menu + pill('all') + pins.map(pill).join('');
   }
   function filterSheet() {
     const order = filterOrder(), pins = filterPins();
@@ -1444,7 +1448,7 @@
       .sort((a, b) => (b.test_date || b.week_of).localeCompare(a.test_date || a.week_of));
     const ordered = [...upcoming, ...past];
     return `
-      <div class="page-head"><div><h2>Spelling words</h2></div></div>
+      <div class="page-head"><div><h2>Spelling words</h2></div>${upcoming.length && testLabel(upcoming[0].test_date) ? `<span class="chip chip-volunteer">${esc(testLabel(upcoming[0].test_date))}</span>` : ''}</div>
       ${classBar()}
       ${ordered.map((s, i) => {
         const next = s.id === nextId;
@@ -1455,8 +1459,7 @@
         <article class="card spell ${next ? 'current' : ''}">
           <div class="spell-head">
             <div>
-              ${next ? `<span class="chip chip-volunteer">Up next${countdown ? ' · ' + esc(countdown) : ''}</span>` : ''}
-              <p class="spell-date ${next ? 'mt-8' : 'mt-0'}">${esc(headline)}</p>
+              <p class="spell-date mt-0">${esc(headline)}</p>
               ${s.title ? `<h3>${esc(s.title)}</h3>` : ''}
             </div>
             <button class="btn btn-ghost btn-small" data-action="edit-spell" data-id="${esc(s.id)}" aria-label="${esc('Edit ' + headline)}">${ICON.edit} Edit</button>
@@ -2513,9 +2516,14 @@
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
+      else if (a === 'rec-filter-menu') {
+        const cat = state.recCat || 'all';
+        const row = (id, label) => `<button class="frow-name ${cat === id ? 'on' : ''}" data-action="rec-cat" data-cat="${id}" aria-pressed="${cat === id}">${label}</button>`;
+        openSheet(`<h2>Filter recommendations</h2>${row('all', 'All')}${REC_CATS.map((c) => row(c[0], c[1] + ' ' + c[2])).join('')}<div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Done</button></div>`);
+      }
       else if (a === 'rec-vote') await toggleRecVote(el.dataset.id);
       else if (a === 'edit-rec') recSheet(el.dataset.id);
-      else if (a === 'rec-cat') { state.recCat = el.dataset.cat; const x = ($('.filters') || {}).scrollLeft || 0; keepScroll(renderView); const f = $('.filters'); if (f) f.scrollLeft = x; }
+      else if (a === 'rec-cat') { state.recCat = el.dataset.cat; if (document.querySelector('.sheet')) closeSheet(); const x = ($('.filters') || {}).scrollLeft || 0; keepScroll(renderView); const f = $('.filters'); if (f) f.scrollLeft = x; }
       else if (a === 'drop-rec-photo') { recPhotoGone = true; const s = $('#recPhotoSlot'); if (s) s.innerHTML = '<input class="input" type="file" name="photo" accept="image/*" aria-label="Photo">'; }
       else if (a === 'del-rec') { if (!confirm('Delete this recommendation for everyone?')) return; const r = state.recs.find((x) => String(x.id) === el.dataset.id); await api.deleteRec(r); closeSheet(); toast('Recommendation deleted'); await refresh(); }
       else if (a === 'filter-menu') filterSheet();
