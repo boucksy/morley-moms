@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 102;
+  const APP_VERSION = 103;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -648,8 +648,9 @@
       if (!old) { if (!mine(p)) lines.push({ i: '💡', t: `${firstName(p.created_by_name)} added a plan: ${p.title}` }); return; }
       if (plRec(p).join('|') !== old.join('|')) lines.push({ i: '✏️', t: `Plan updated: ${p.title}` });
     });
-    const newRecs = state.recs.filter((r) => !snap.rc[r.id] && !mine(r));
-    if (snap.rc && newRecs.length) {
+    const oldRc = snap.rc || {};
+    const newRecs = state.recs.filter((r) => !oldRc[r.id] && !mine(r));
+    if (newRecs.length) {
       const cats = [...new Set(newRecs.map((r) => recCat(r.category)[2]))];
       const list = cats.length > 1 ? cats.slice(0, -1).join(', ') + ' and ' + cats[cats.length - 1] : cats[0];
       lines.push({ i: '💛', t: `New recommendations added for ${list}` });
