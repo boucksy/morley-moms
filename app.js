@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 103;
+  const APP_VERSION = 104;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -560,9 +560,9 @@
     const tabs = [
       { id: 'events', label: 'Events', icon: ICON.calendar },
       { id: 'spelling', label: 'Spelling', icon: ICON.book },
+      { id: 'specials', label: 'Specials', icon: ICON.star },
       { id: 'plans', label: 'Plans', icon: ICON.bulb },
       { id: 'recs', label: 'Recs', icon: ICON.heart },
-      { id: 'specials', label: 'Specials', icon: ICON.star },
       { id: 'links', label: 'Links', icon: ICON.link },
     ];
     const hadFocus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#tabbar') ? document.activeElement.dataset.tab : null;
