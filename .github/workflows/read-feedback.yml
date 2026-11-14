@@ -4,8 +4,12 @@ jobs:
   read:
     runs-on: ubuntu-latest
     steps:
-      - name: Print feedback
+      - name: Inspect
         env:
           DB: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          psql "$DB" -c "select created_at, kind, member_name, app_version, message from public.feedback order by created_at desc limit 30;"
+          psql "$DB" -c "select policyname, cmd, roles, with_check, qual from pg_policies where tablename='feedback';"
+          psql "$DB" -c "select grantee, privilege_type from information_schema.role_table_grants where table_name='feedback';"
+          psql "$DB" -c "\d public.feedback"
+          psql "$DB" -c "select pg_get_functiondef('public.is_member'::regproc);"
+          psql "$DB" -c "select count(*) members from public.members;"
