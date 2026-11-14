@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 106;
+  const APP_VERSION = 107;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -588,7 +588,7 @@
   const writeSeen = (v) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(v)); } catch {} };
   const evRec = (e) => [e.title, e.starts_at, e.canceled ? 1 : 0, e.location || '', sigHash(e.details || ''), sigHash([e.ends_at, e.all_day, e.category, e.repeat_days, e.repeat_until, e.classroom_id, e.link])];
   const spRec = (x) => [x.test_date || '', x.title || '', sigHash([x.words, x.challenge_words, x.classroom_id])];
-  const plRec = (p) => [p.title, sigHash([p.details, p.link, p.plan_date])];
+  const plRec = (p) => [p.title, sigHash([p.details, p.link, p.plan_date, p.plan_time, p.cost])];
   const clRec = (c) => [c.name, sigHash([c.schedule, c.notes])];
   const rcRec = (r) => [r.title, sigHash([r.notes, r.link, r.category, r.photo_path])];
   const RECS = { ev: evRec, sp: spRec, pl: plRec, cl: clRec, rc: rcRec };
@@ -1035,7 +1035,8 @@
     const interested = respFor(p.id, 'interested').map((r) => firstName(r.member_name)).sort();
     const signed = respFor(p.id, 'signed_up').map((r) => firstName(r.member_name)).sort();
     const link = cleanLink(p.link);
-    const when = p.plan_date ? fmtDay(parseDate(p.plan_date)) : '';
+    const tm = p.plan_time ? fmtTime(new Date('2000-01-01T' + p.plan_time.slice(0, 5))) : '';
+    const when = [p.plan_date ? fmtDay(parseDate(p.plan_date)) : '', tm].filter(Boolean).join(' · ');
     return `<article class="card plan">
       <div class="plan-head">
         <h3>${esc(p.title)}</h3>
@@ -1045,6 +1046,7 @@
         </div>
       </div>
       ${when ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>${esc(when)}</span></p>` : ''}
+      ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
       ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
       <div class="rsvp-btns mt-10" role="group" aria-label="${esc('Your response to ' + p.title)}">
         <button class="rsvp-btn ${mine === 'interested' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="interested" aria-pressed="${mine === 'interested'}"><span class="box" aria-hidden="true">${mine === 'interested' ? '✓' : ''}</span>Interested</button>
@@ -1155,14 +1157,16 @@
         <label class="field"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p ? p.title : '')}" placeholder="e.g. YMCA Winter Academy"></label>
         <label class="field"><span>Sign-up link <small>(optional)</small></span><input class="input" name="link" type="url" inputmode="url" autocapitalize="off" maxlength="500" value="${esc(p && p.link ? p.link : '')}" placeholder="https://…"></label>
         <label class="field"><span>Date <small>(optional)</small></span><input class="input" type="date" name="plan_date" value="${esc(p && p.plan_date ? p.plan_date : '')}"></label>
-        <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="Cost, dates, what the girls would do…">${esc(p && p.details ? p.details : '')}</textarea></label>
+        <label class="field"><span>Time <small>(optional)</small></span><input class="input" type="time" name="plan_time" value="${esc(p && p.plan_time ? p.plan_time.slice(0, 5) : '')}"></label>
+        <label class="field"><span>Cost <small>(optional)</small></span><input class="input" name="cost" maxlength="120" value="${esc(p && p.cost ? p.cost : '')}" placeholder="e.g. $5, or $34/adults, $10/kids"></label>
+        <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What the girls would do, what to bring…">${esc(p && p.details ? p.details : '')}</textarea></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${p ? 'Save changes' : 'Add plan'}</button>
           ${cancelBtn()}
           ${p ? `<button class="btn btn-danger" type="button" data-action="del-plan" data-id="${esc(p.id)}">Delete</button>` : ''}
         </div>
       </form>`, async (fd) => {
-      const row = { title: fd.get('title').trim(), link: cleanLink(fd.get('link')) || null, plan_date: fd.get('plan_date') || null, details: fd.get('details').trim() || null };
+      const row = { title: fd.get('title').trim(), link: cleanLink(fd.get('link')) || null, plan_date: fd.get('plan_date') || null, plan_time: fd.get('plan_time') || null, cost: fd.get('cost').trim() || null, details: fd.get('details').trim() || null };
       if (p) await api.updatePlan(p.id, row); else await api.addPlan(row);
       state.tab = 'plans'; toast(p ? 'Plan updated' : 'Plan added');
     });

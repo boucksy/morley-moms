@@ -646,3 +646,8 @@ create policy "add my rec vote" on public.rec_votes
 drop policy if exists "remove my rec vote" on public.rec_votes;
 create policy "remove my rec vote" on public.rec_votes
   for delete to authenticated using (member_id = auth.uid());
+
+-- ---------- Plan time and cost ----------
+-- Plans can have a start time and a free-text cost (e.g. "$34/adults, $10/kids").
+alter table public.plans add column if not exists plan_time text;
+alter table public.plans add column if not exists cost text check (char_length(cost) <= 120);

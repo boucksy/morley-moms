@@ -912,3 +912,4 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .filter.more svg { width: 1em; height: 1em; }
 .filter.more .caret { font-size: .8em; }
 .page-head .chip { align-self: center; }
+.cost-mark { display: inline-flex; width: 16px; justify-content: center; font-weight: 800; color: var(--muted, inherit); }
