@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 105;
+  const APP_VERSION = 106;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -160,6 +160,7 @@
       async readPhoto() { throw new Error('demo'); },
       async readNote() { throw new Error('demo'); },
       async sendFeedback() { return delay(); },
+      async listFeedback() { return delay([{ id: 'f1', kind: 'idea', message: 'Could we add a carpool board?', member_name: 'Jess', created_at: new Date(Date.now() - 3600e3).toISOString() }]); },
       async cleanupOld() { return 0; },
       async listClassrooms() { return delay([...db.classrooms].sort((a, b) => a.name.localeCompare(b.name))); },
       async saveClassroom(row, id) {
@@ -301,6 +302,7 @@
         if (error) throw new Error('Couldn\u2019t catch that. Tap the mic and try again.');
         return (data && data.text) || '';
       },
+      async listFeedback() { return ok(await sb.from('feedback').select('*').order('created_at', { ascending: false }).limit(50)); },
       async sendFeedback(kind, message) {
         const row = { kind, message, member_name: state.me.display_name || '', app_version: APP_VERSION, user_agent: (navigator.userAgent || '').slice(0, 300) };
         const { error } = await sb.from('feedback').insert(row);
@@ -2310,6 +2312,7 @@
         ${[['auto', 'Auto'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => `<label class="theme-opt"><input type="radio" name="theme" value="${v}" ${getTheme() === v ? 'checked' : ''}><span>${l}</span></label>`).join('')}
       </fieldset>
       <p class="sub sub-meta">Auto follows your phone’s light or dark setting.</p>
+      ${state.me.is_admin ? `<button class="btn btn-ghost btn-block mb-12" data-action="feedback-inbox">Read suggestions and bug reports</button>` : ''}
       <p class="sub sub-meta">Privacy: your email is used only to sign you in. Other moms see your name, not your email. Only the group admin can see emails and when you last opened the app.</p>
       <p class="sub sub-meta">App version ${APP_VERSION}</p>
       <div class="sheet-actions">
@@ -2516,6 +2519,14 @@
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
+      else if (a === 'feedback-inbox') {
+        let rows = [];
+        try { rows = await api.listFeedback(); } catch { toast('Couldn’t load them. Try again in a bit.'); return; }
+        const kinds = { idea: 'Idea', bug: 'Bug', other: 'Note' };
+        openSheet(`<h2>Suggestions and bugs</h2>
+          ${rows.length ? rows.map((f) => `<article class="card"><p class="meta"><span><strong>${esc(kinds[f.kind] || 'Note')}</strong> · ${esc(f.member_name || 'A mom')} · ${esc(new Date(f.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }))}${f.app_version ? ' · v' + esc(f.app_version) : ''}</span></p><p class="details">${linkify(f.message)}</p></article>`).join('') : '<p class="sub">Nothing yet.</p>'}
+          <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Close</button></div>`);
+      }
       else if (a === 'rec-filter-menu') {
         const cat = state.recCat || 'all';
         const row = (id, label) => `<button class="frow-name ${cat === id ? 'on' : ''}" data-action="rec-cat" data-cat="${id}" aria-pressed="${cat === id}">${label}</button>`;
