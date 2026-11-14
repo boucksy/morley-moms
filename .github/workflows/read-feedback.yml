@@ -1,0 +1,11 @@
+name: Read feedback (one-off)
+on: workflow_dispatch
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print feedback
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$DB" -c "select created_at, kind, member_name, app_version, message from public.feedback order by created_at desc limit 30;"
