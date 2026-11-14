@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 108;
+  const APP_VERSION = 109;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1058,17 +1058,17 @@
   }
   function plansView() {
     const todayIso = isoDate(startOfToday());
-    const f = state.planFilter || 'all';
+    const f = state.planFilter || 'this';
     const t0 = startOfToday(), m0 = t0.getFullYear() * 12 + t0.getMonth();
     const monthOf = (iso) => { const d = parseDate(iso); return d.getFullYear() * 12 + d.getMonth() - m0; };
-    const inFilter = (p) => f === 'all' || (p.plan_date && (f === 'this' ? monthOf(p.plan_date) === 0 : f === 'next' ? monthOf(p.plan_date) === 1 : monthOf(p.plan_date) > 1));
+    const inFilter = (p) => !p.plan_date ? f === 'future' : (f === 'this' ? monthOf(p.plan_date) === 0 : f === 'next' ? monthOf(p.plan_date) === 1 : monthOf(p.plan_date) > 1);
     const pill = (id, label) => `<button class="filter ${f === id ? 'on' : ''}" data-action="plan-filter" data-f="${id}" aria-pressed="${f === id}">${label}</button>`;
     const list = state.plans.filter((p) => (!p.plan_date || p.plan_date >= todayIso) && inFilter(p)).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     return `
       <div class="page-head"><div><h2>Plans</h2></div></div>
       ${subLead(`Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.`, 'sub-lead-6')}
-      <div class="filters" role="group" aria-label="Filter plans">${pill('all', 'All')}${pill('this', 'This month')}${pill('next', 'Next month')}${pill('future', 'Future')}</div>
-      ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">${f === 'all' ? 'No plans yet' : 'No plans here'}</p><p>Tap + to add something we might do together.</p></div>`}`;
+      <div class="filters" role="group" aria-label="Filter plans">${pill('this', 'This month')}${pill('next', 'Next month')}${pill('future', 'Future')}</div>
+      ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans here</p><p>Tap + to add something we might do together.</p></div>`}`;
   }
   // ---- recommendations ----
   const REC_CATS = [['care', '🩺', 'Doctors & care'], ['books', '📚', 'Books'], ['food', '🍽️', 'Food'], ['activities', '🎨', 'Activities'], ['shops', '🛍️', 'Shops & services'], ['other', '✨', 'Other']];
