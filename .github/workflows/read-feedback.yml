@@ -4,12 +4,16 @@ jobs:
   read:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect
+      - name: Simulate a mom sending feedback
         env:
           DB: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          psql "$DB" -c "select policyname, cmd, roles, with_check, qual from pg_policies where tablename='feedback';"
-          psql "$DB" -c "select grantee, privilege_type from information_schema.role_table_grants where table_name='feedback';"
-          psql "$DB" -c "\d public.feedback"
-          psql "$DB" -c "select pg_get_functiondef('public.is_member'::regproc);"
-          psql "$DB" -c "select count(*) members from public.members;"
+          psql "$DB" -v ON_ERROR_STOP=0 <<'SQL'
+          select count(*) as members from public.members;
+          begin;
+          select set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid()::text, 'email', (select email from public.members where not coalesce(is_admin,false) limit 1), 'role','authenticated')::text, true);
+          set local role authenticated;
+          select public.is_member() as is_member_now;
+          insert into public.feedback (kind, message, member_name, app_version, user_agent) values ('idea','test','Test',106,'ua');
+          rollback;
+          SQL
