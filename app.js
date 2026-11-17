@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 109;
+  const APP_VERSION = 111;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -310,18 +310,25 @@
         // Email is best effort: the note is already saved either way.
         try { await sb.functions.invoke('send-feedback', { body: row }); } catch { /* saved anyway */ }
       },
+      // The function says why it failed (credits, key, busy). Keep that so Miranda can see it.
+      async aiFail(error, data) {
+        let reason = data && data.reason;
+        try { if (!reason && error && error.context) reason = (await error.context.json()).reason; } catch { /* ignore */ }
+        lastAiReason = reason || (error && error.message) || '';
+        return new Error('ai');
+      },
       async readNote(text) {
         const fd = new FormData();
         fd.append('text', text);
         const { data, error } = await sb.functions.invoke('read-photo', { body: fd });
-        if (error || !data || data.error) throw new Error('ai');
+        if (error || !data || data.error) throw await api.aiFail(error, data);
         return data;
       },
       async readPhoto(file) {
         const fd = new FormData();
         fd.append('photo', file, 'paper.jpg');
         const { data, error } = await sb.functions.invoke('read-photo', { body: fd });
-        if (error || !data || data.error) throw new Error('vision');
+        if (error || !data || data.error) throw await api.aiFail(error, data);
         return data;
       },
       async listClassrooms() { return ok(await sb.from('classrooms').select('*').order('name')); },
@@ -2017,6 +2024,8 @@
   }
 
   // Turn the AI reader's answer into a filled-in form.
+  let lastAiReason = '';
+  const aiWhy = () => (state.me && state.me.is_admin && lastAiReason ? ' (' + lastAiReason + ')' : '');
   function aiToForm(v) {
     const teacher = (v.teacher || '').trim();
     const cls = teacher ? findClass(teacher) : null;
@@ -2047,7 +2056,7 @@
       try {
         const form = aiToForm(await api.readNote(text));
         if (form) { if (form.type === 'event' && !form.title) form.title = local.title || ''; openFilled(form); return; }
-      } catch { toast('The AI reader isn’t answering, so I used the basic one. Check the title.'); }
+      } catch { toast('The AI reader isn’t answering, so I used the basic one. Check the title.' + aiWhy()); }
       micUi('idle', 'Tap to talk');
     }
     openFilled(local);
@@ -2147,7 +2156,7 @@
         openFilled(r, r.type === 'spelling' ? small : null);
         return;
       }
-    } catch { toast('The AI reader isn’t answering, so I’m using the basic one.'); }
+    } catch { toast('The AI reader isn’t answering, so I’m using the basic one.' + aiWhy()); }
     try {
       await loadTesseract();
       worker = await window.Tesseract.createWorker('eng');

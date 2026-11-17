@@ -194,7 +194,9 @@
       const items = lines.filter((l) => /^\s*\d{1,2}\s*[.)\-:]\s*\S/.test(l) || /^\s*[A-Za-z'-]{2,20}\s*$/.test(l));
       main = items.join('\n');
     } else {
-      main = '';
+      // No "words are" label: use what follows a colon, or else everything that isn't a label or date.
+      const colon = main.indexOf(':');
+      main = colon >= 0 ? main.slice(colon + 1) : main.replace(/^\s*(?:(?:the|this|our|a|week'?s?|spelling|test|quiz|list|unit|lesson|\d+|on|is|for)\b[\s,:-]*)+/i, '');
     }
     // Stop the word list at a sentence that's clearly about something else.
     main = main.split(/\b(?:test|quiz|due|please|practice|study|parents?|signature|sign)\b/i)[0];

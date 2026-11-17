@@ -113,8 +113,15 @@ Deno.serve(async (req) => {
     }),
   });
   if (!res.ok) {
-    console.error("read-photo failed", res.status, await res.text());
-    return json({ error: "Couldn't read that photo. Try again." }, 502);
+    const body = await res.text();
+    console.error("read-photo failed", res.status, body);
+    const lower = body.toLowerCase();
+    const reason = lower.includes("credit balance") ? "AI credits are used up (add credit at console.anthropic.com)"
+      : res.status === 401 ? "AI key was rejected (check ANTHROPIC_API_KEY)"
+      : res.status === 404 ? "AI model name not found (check VISION_MODEL)"
+      : res.status === 429 || res.status === 529 ? "AI is busy or rate limited"
+      : `AI service error ${res.status}`;
+    return json({ error: "Couldn't read that photo. Try again.", reason }, 502);
   }
   const data = await res.json();
   const raw = String(data?.content?.[0]?.text ?? "");
