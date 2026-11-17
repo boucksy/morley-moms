@@ -1,0 +1,14 @@
+name: Function logs (one-off)
+on: workflow_dispatch
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Logs
+        env:
+          T: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          R: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          q() { curl -sS -G -H "Authorization: Bearer $T" "https://api.supabase.com/v1/projects/$R/analytics/endpoints/logs.all" --data-urlencode "sql=$1"; echo; }
+          q "select timestamp, event_message from function_logs where event_message like '%read-photo%' or event_message like '%failed%' order by timestamp desc limit 15"
+          q "select timestamp, m.function_id, response.status_code from function_edge_logs cross join unnest(metadata) as m cross join unnest(m.response) as response order by timestamp desc limit 25"
