@@ -651,3 +651,8 @@ create policy "remove my rec vote" on public.rec_votes
 -- Plans can have a start time and a free-text cost (e.g. "$34/adults, $10/kids").
 alter table public.plans add column if not exists plan_time text;
 alter table public.plans add column if not exists cost text check (char_length(cost) <= 120);
+
+-- ---------- Events linked to plans ----------
+-- An event can be linked to the plan it came from. Deleting the plan removes the event too.
+alter table public.events add column if not exists plan_id uuid references public.plans(id) on delete cascade;
+create index if not exists events_plan_id_idx on public.events (plan_id);

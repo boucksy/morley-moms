@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 116;
+  const APP_VERSION = 117;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -127,7 +127,7 @@
       async listPlans() { return delay(db.plans.map((p) => ({ ...p }))); },
       async addPlan(row) { db.plans.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(); },
       async updatePlan(id, row) { Object.assign(db.plans.find((p) => p.id === id), row); return delay(); },
-      async deletePlan(id) { db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
+      async deletePlan(id) { db.events = db.events.filter((e) => e.plan_id !== id); db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
       async listRecs() { return delay(db.recs.map((r) => ({ ...r }))); },
       async listRecVotes() { return delay(db.recVotes.map((r) => ({ ...r }))); },
       async setRecVote(recId, on, me) {
@@ -1041,6 +1041,7 @@
     try { await api.setPlanStatus(planId, next, { id: myId(), name: myName() }); }
     catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
   }
+  const linkedEvents = (planId) => state.events.filter((e) => e.plan_id && String(e.plan_id) === String(planId));
   function planCard(p) {
     const mine = myResp(p.id);
     const interested = respFor(p.id, 'interested').map((r) => firstName(r.member_name)).sort();
@@ -1057,6 +1058,7 @@
         </div>
       </div>
       ${when ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>${esc(when)}</span></p>` : ''}
+      ${linkedEvents(p.id).length ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>On the calendar</span></p>` : ''}
       ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
       ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
       <div class="rsvp-btns mt-10" role="group" aria-label="${esc('Your response to ' + p.title)}">
@@ -1181,6 +1183,7 @@
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${p ? 'Save changes' : 'Add plan'}</button>
           ${cancelBtn()}
+          ${p && p.plan_date && !linkedEvents(p.id).length ? `<button class="btn btn-ghost" type="button" data-action="plan-to-event" data-id="${esc(p.id)}">Put it on the calendar</button>` : ''}
           ${p ? `<button class="btn btn-danger" type="button" data-action="del-plan" data-id="${esc(p.id)}">Delete</button>` : ''}
         </div>
       </form>`, async (fd) => {
@@ -1305,7 +1308,7 @@
       end_time: !ev.all_day && ev.ends_at ? hhmm(new Date(ev.ends_at)) : '',
       end_date: ev.all_day && ev.ends_at && lastDayOf(ev) > localDay(ev.starts_at) ? isoDate(lastDayOf(ev)) : '',
       repeat_days: ev.repeat_days || [], repeat_until: ev.repeat_until || '',
-      replaces: ev.replaces || null, canceled: !!ev.canceled,
+      replaces: ev.replaces || null, canceled: !!ev.canceled, plan_id: ev.plan_id || null,
     };
   }
 
@@ -1320,6 +1323,7 @@
       ${filledNote(p)}
       ${series ? `<p class="replace-note">Instead of: <strong>${esc(series.title)}</strong></p>` : ''}
       <form id="sheetForm">
+        <input type="hidden" name="plan_id" value="${esc(p.plan_id || '')}">
         <label class="field ${p._filled && !p.title ? 'needs' : ''}"><span>What is it?</span><input class="input" name="title" required maxlength="120" value="${esc(p.title || '')}" placeholder="${p._filled && !p.title ? 'Add a short title' : 'e.g. Book fair volunteers'}"></label>
         <div class="field" role="group" aria-labelledby="typeLabel"><span id="typeLabel">Type</span>
           <div class="seg">${CATS.map((c) => `<label><input type="radio" name="category" value="${c.id}" ${c.id === cat ? 'checked' : ''}><span>${c.label}</span></label>`).join('')}</div>
@@ -1381,6 +1385,7 @@
       };
       if (fd.get('link').trim() && !row.link) throw new Error('That link doesn\u2019t look right. It should start with https://');
       if (series) { row.replaces = series.id; row.canceled = !!p.canceled; }
+      if (fd.get('plan_id')) row.plan_id = fd.get('plan_id');
       if (editing) await api.updateEvent(editing.id, row); else await api.addEvent(row);
       state.tab = 'events'; state.filter = 'all';
       toast(editing ? 'Event updated' : 'Event posted');
@@ -2548,7 +2553,12 @@
       else if (a === 'going') await setGoingFor(el.dataset.id, el.dataset.val);
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
-      else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
+      else if (a === 'plan-to-event') {
+        const pl = state.plans.find((x) => String(x.id) === el.dataset.id); if (!pl) return;
+        closeSheet();
+        addEventSheet({ title: pl.title, category: 'social', date: pl.plan_date, time: pl.plan_time ? pl.plan_time.slice(0, 5) : '', link: pl.link || '', details: pl.details || '', plan_id: pl.id, _filled: false });
+      }
+      else if (a === 'del-plan') { if (!confirm(linkedEvents(el.dataset.id).length ? 'Delete this plan for everyone? It will come off the calendar too.' : 'Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
       else if (a === 'feedback-inbox') {
         let rows = [];
         try { rows = await api.listFeedback(); } catch { toast('Couldn’t load them. Try again in a bit.'); return; }
