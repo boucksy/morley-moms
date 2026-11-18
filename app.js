@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 115;
+  const APP_VERSION = 116;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -574,12 +574,11 @@
       { id: 'spelling', label: 'Spelling', icon: ICON.book },
       { id: 'specials', label: 'Specials', icon: ICON.star },
       { id: 'plans', label: 'Plans', icon: ICON.bulb },
-      { id: 'recs', label: 'Recs', icon: ICON.heart },
       { id: 'links', label: 'Links', icon: ICON.link },
     ];
     const hadFocus = document.activeElement && document.activeElement.closest && document.activeElement.closest('#tabbar') ? document.activeElement.dataset.tab : null;
     $('#tabbar').innerHTML = tabs.map((t) => {
-      const on = state.tab === t.id || (t.id === 'links' && state.tab === 'members');
+      const on = state.tab === t.id || (t.id === 'links' && (state.tab === 'members' || state.tab === 'recs'));
       return `
       <button class="tab ${on ? 'on' : ''}" data-action="tab" data-tab="${t.id}" ${on ? 'aria-current="page"' : ''}>
         <span class="pill">${t.icon}</span>${t.label}
@@ -706,7 +705,7 @@
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
   // One-time "new feature" lines, shown once per phone in the What's new sheet.
-  const FEATURE_NEWS = [{ id: 'recs-tab', i: '💛', t: 'New: Recommendations tab. Share doctors, books, food and more.' }];
+  const FEATURE_NEWS = [{ id: 'recs-links', i: '💛', t: 'New: Recommendations. Share doctors, books, food and more. Find it in the Links tab.' }];
   const featSeen = () => readJson('mm.feat', []);
   function maybeAnnounce() {
     if (!state.me || document.querySelector('.sheet-backdrop')) return;
@@ -716,9 +715,9 @@
     // piles up against the saved baseline and arrives together in the next sheet.
     const day = isoDate(new Date());
     let last = ''; try { last = localStorage.getItem('mm.lastNews') || ''; } catch {}
-    if (last === day) return;
-    const lines = whatChanged(snap);
     const feats = FEATURE_NEWS.filter((f) => !featSeen().includes(f.id));
+    if (last === day && !feats.length) return;   // new-feature notes always show on the next load
+    const lines = whatChanged(snap);
     feats.forEach((f) => lines.unshift({ i: f.i, t: f.t }));
     if (!lines.length) { writeSeen(buildSnapshot()); return; }
     try { localStorage.setItem('mm.lastNews', day); } catch {}
@@ -1127,6 +1126,7 @@
     const menu = `<button class="filter more ${cat !== 'all' ? 'on' : ''}" data-action="rec-filter-menu" aria-haspopup="dialog" aria-label="${cat !== 'all' ? esc(recCat(cat)[2]) + ' filter on, choose a filter' : 'Choose a filter'}">${ICON.filter}<span>${cat !== 'all' ? esc(recCat(cat)[1] + ' ' + recCat(cat)[2]) : 'Filter'}</span><span class="caret" aria-hidden="true">\u25BE</span></button>`;
     const pill = (id, label) => `<button class="filter ${cat === id ? 'on' : ''}" data-action="rec-cat" data-cat="${id}" aria-pressed="${cat === id}">${label}</button>`;
     return `
+      <button class="link-btn link-btn-back" data-action="tab" data-tab="links">\u2039 Links</button>
       <div class="page-head"><div><h2>Recommendations</h2></div></div>
       ${subLead(`Doctors, books, food, anything you’d tell a friend about. Tap + to add yours.`, 'sub-lead-6')}
       <div class="filters" role="group" aria-label="Filter by type">${menu}${pill('all', 'All')}</div>
@@ -2221,6 +2221,12 @@
             <span class="linkrow-text"><strong>${esc(l.title)}</strong><span class="sr-only">(opens in a new tab)</span></span>
             <span class="linkrow-go" aria-hidden="true">${ICON.link}</span>
           </a>`).join('')}`).join('')}
+      <p class="section-label">From the moms</p>
+      <button class="card linkrow linkrow-btn slim" data-action="tab" data-tab="recs">
+        <span class="linkrow-icon" aria-hidden="true">\uD83D\uDC9B</span>
+        <span class="linkrow-text"><strong>Recommendations</strong><small>Doctors, books, food and more</small></span>
+        <span class="linkrow-go" aria-hidden="true">\u203A</span>
+      </button>
       <p class="section-label">The group</p>
       <button class="card linkrow linkrow-btn slim" data-action="tab" data-tab="members">
         <span class="linkrow-icon" aria-hidden="true">\uD83D\uDC6D</span>
