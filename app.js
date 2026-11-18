@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 113;
+  const APP_VERSION = 115;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -234,13 +234,15 @@
         }
         ok(await sb.from('recs').insert(row));
       },
-      async updateRec(id, row, file) {
+      async updateRec(id, row, file, oldPath) {
         if (file) {
           const path = `recs/${uid()}.jpg`;
           ok(await sb.storage.from(PHOTO_BUCKET).upload(path, file, { contentType: file.type || 'image/jpeg', upsert: false }));
           row.photo_path = path;
         }
         ok(await sb.from('recs').update(row).eq('id', id));
+        // Don't leave the replaced photo behind in storage.
+        if (file && oldPath) { try { await sb.storage.from(PHOTO_BUCKET).remove([oldPath]); } catch { /* not critical */ } }
       },
       async deleteRec(row) {
         if (row.photo_path) await sb.storage.from(PHOTO_BUCKET).remove([row.photo_path]);
@@ -591,7 +593,7 @@
   // ---- "What's new" sheet: shows what other moms changed since this phone last said OK ----
   const SEEN_KEY = 'mm.seen';
   const sigHash = (o) => { const t = JSON.stringify(o === undefined ? null : o); let x = 5381; for (let i = 0; i < t.length; i++) x = ((x << 5) + x + t.charCodeAt(i)) | 0; return String(x); };
-  const readSeen = () => { try { const v = JSON.parse(localStorage.getItem(SEEN_KEY)); return v && v.v === 1 ? v : null; } catch { return null; } };
+  const readSeen = () => { try { const v = JSON.parse(localStorage.getItem(SEEN_KEY)); return v && v.v === 1 ? { ev: {}, sp: {}, pl: {}, cl: {}, rc: {}, go: {}, pr: {}, ...v } : null; } catch { return null; } };
   const writeSeen = (v) => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(v)); } catch {} };
   const evRec = (e) => [e.title, e.starts_at, e.canceled ? 1 : 0, e.location || '', sigHash(e.details || ''), sigHash([e.ends_at, e.all_day, e.category, e.repeat_days, e.repeat_until, e.classroom_id, e.link])];
   const spRec = (x) => [x.test_date || '', x.title || '', sigHash([x.words, x.challenge_words, x.classroom_id])];
@@ -625,7 +627,9 @@
     });
     if (snap && any) writeSeen(snap);
   }
-  function whatChanged(snap) {
+  function whatChanged(snap0) {
+    // Old saved snapshots may lack newer sections; never assume a section exists.
+    const snap = { ev: {}, sp: {}, pl: {}, cl: {}, rc: {}, go: {}, pr: {}, ...(snap0 || {}) };
     const lines = [], me = state.me, today = startOfToday(), mail = myId();
     const mine = (x) => x.created_by && me && x.created_by === me.id;
     const upcoming = (e) => (isRepeating(e) ? (!e.repeat_until || parseDate(e.repeat_until) >= today) : lastDayOf(e) >= today);
@@ -654,6 +658,7 @@
       if (spRec(x).join('|') !== old.join('|') && (!x.test_date || parseDate(x.test_date) >= today)) lines.push({ i: '✏️', t: 'A spelling list was updated', d: x.test_date ? 'test ' + fmtDay(parseDate(x.test_date)) : '' });
     });
     state.plans.forEach((p) => {
+      if (p.plan_date && p.plan_date < isoDate(today)) return;
       const old = snap.pl[p.id];
       if (!old) { if (!mine(p)) lines.push({ i: '💡', t: `${firstName(p.created_by_name)} added a plan: ${p.title}` }); return; }
       if (plRec(p).join('|') !== old.join('|')) lines.push({ i: '✏️', t: `Plan updated: ${p.title}` });
@@ -706,7 +711,7 @@
   function maybeAnnounce() {
     if (!state.me || document.querySelector('.sheet-backdrop')) return;
     const snap = readSeen();
-    if (!snap) { writeSeen(buildSnapshot()); return; }       // first time on this phone: start from today
+    if (!snap) { writeSeen(buildSnapshot()); writeJson('mm.feat', FEATURE_NEWS.map((f) => f.id)); return; }       // first time on this phone: start from today
     // At most once a day. Anything that changes in between (or while someone is away for days)
     // piles up against the saved baseline and arrives together in the next sheet.
     const day = isoDate(new Date());
@@ -1073,7 +1078,7 @@
     const list = state.plans.filter((p) => (!p.plan_date || p.plan_date >= todayIso) && inFilter(p)).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     return `
       <div class="page-head"><div><h2>Plans</h2></div></div>
-      ${subLead(`Things we’re thinking about doing together. Tap Interested, and We signed up once you’ve registered.`, 'sub-lead-6')}
+      ${subLead(`Things we’re thinking about doing together. Tap Interested to show you’d like to go, then tap We signed up once you’ve registered.`, 'sub-lead-6')}
       <div class="filters" role="group" aria-label="Filter plans">${pill('this', 'This month')}${pill('next', 'Next month')}${pill('future', 'Future')}</div>
       ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans here</p><p>Tap + to add something we might do together.</p></div>`}`;
   }
@@ -1158,7 +1163,7 @@
       if (!title) throw new Error('Add a name or say a few words about it.');
       const raw = fd.get('photo'), file = raw && raw.size > 0 ? await shrinkImage(raw, 1000, 0.72) : null;
       const row = { title: title.slice(0, 120), category: fd.get('category'), notes: notes || null, link: cleanLink(fd.get('link')) || null };
-      if (r) await api.updateRec(r.id, row, file); else await api.addRec(row, file);
+      if (r) await api.updateRec(r.id, row, file, r.photo_path); else await api.addRec(row, file);
       state.tab = 'recs'; renderTabs(); toast(r ? 'Updated' : 'Recommendation added');
     });
   }

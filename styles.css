@@ -308,7 +308,7 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
   display: flex; padding: var(--space-1h) var(--space-2) calc(6px + var(--safe-bottom));
 }
 .tab {
-  flex: 1; min-width: 0; overflow-wrap: anywhere; border: 0; background: none; padding: var(--space-1h) var(--space-1);
+  flex: 1; min-width: 0; white-space: nowrap; border: 0; background: none; padding: var(--space-1h) var(--space-1);
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   font-size: var(--text-2xs); font-weight: 800; color: var(--ink-3);
 }
@@ -915,3 +915,5 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .cost-mark { display: inline-flex; width: 16px; justify-content: center; font-weight: 800; color: var(--muted, inherit); }
 /* Holiday splash: a turkey in a Christmas tree costume (drawn, not an emoji) */
 .boot .leaf.tree-turkey { font-size: 0 !important; line-height: 0; }
+
+@media (max-width: 359px) { .tab { font-size: .58rem; letter-spacing: -.02em; padding-inline: 0; } .tab .pill { width: 40px; } }

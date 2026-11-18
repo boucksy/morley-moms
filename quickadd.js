@@ -295,11 +295,24 @@
   }
 
   function findEvent(raw, now) {
-    const t = normalize(raw);
+    let t = normalize(raw);
     const out = { type: 'event', title: '', category: categoryOf(t), date: null, time: '', location: '', pickup_dropoff: '', details: '' };
     const urlHit = /\b(https?:\/\/[^\s<>"')]+|www\.[^\s<>"')]+)/i.exec(t);
-    if (urlHit) out.link = urlHit[1].replace(/[.,;!?]+$/, '');
+    if (urlHit) { out.link = urlHit[1].replace(/[.,;!?]+$/, ''); t = t.replace(urlHit[1], ' '); }
+    // A day range like "Nov 25-30" or "Nov 25 - Dec 2": keep the first day as the date and fill in the last day.
+    const rng = new RegExp('\\b' + MONTH_RE + '\\s+(\\d{1,2})(?:st|nd|rd|th)?\\s*[-\u2013\u2014]\\s*(?:' + MONTH_RE + '\\s+)?(\\d{1,2})(?:st|nd|rd|th)?\\b', 'i').exec(t);
+    let rangeEnd = null;
+    if (rng) {
+      const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase()), m2 = rng[3] ? MONTHS.indexOf(rng[3].slice(0, 3).toLowerCase()) : m1;
+      rangeEnd = { m: m2, d: +rng[4], text: rng[0], start: rng[1] + ' ' + rng[2] };
+      t = t.replace(rng[0], ' ' + rangeEnd.start + ' ');
+    }
     const dt = findDate(t, now);
+    if (rangeEnd && dt.date) {
+      let e = new Date(dt.date.getFullYear(), rangeEnd.m, rangeEnd.d);
+      if (e < dt.date) e = new Date(dt.date.getFullYear() + 1, rangeEnd.m, rangeEnd.d);
+      if (e > dt.date) out.end_date = iso(e);
+    }
     const tm = findTime(t);
     if (dt.date) out.date = iso(dt.date);
     if (tm.time) out.time = tm.time;
@@ -343,7 +356,7 @@
       title = title.replace(new RegExp('(?:\\b(?:on|this|next|by|is)\\s+)?' + escd, 'gi'), ' ');
     }
     title = title
-      .replace(/\bin the (?:morning|afternoon|evening)\b|\btonight\b/gi, ' ')
+      .replace(/\bin the (?:morning|afternoon|evening)\b|\btonight\b|\ball[\s-]day\b/gi, ' ')
       .replace(/^\s*we(?:'re| are)? (?:need|needing|looking for)\s+/i, ' ')
       .replace(/^\s*(?:okay|ok|so|hey|um+|uh+|add|post|new|please|can you|reminder|heads up)[,:\s]+/gi, ' ')
       .replace(/^\s*(?:there(?:'s| is) (?:a|an)|we(?:'ve| have) (?:a|an|got a)|it'?s|this is)\s+/i, ' ')
