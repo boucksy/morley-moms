@@ -917,3 +917,4 @@ a.icon-link { background: var(--blue); color: var(--on-color); text-decoration: 
 .boot .leaf.tree-turkey { font-size: 0 !important; line-height: 0; }
 
 @media (max-width: 359px) { .tab { font-size: .58rem; letter-spacing: -.02em; padding-inline: 0; } .tab .pill { width: 40px; } }
+.meta .link-btn { display: inline; width: auto; padding: 0; margin: 0; min-height: 0; text-align: left; font: inherit; font-weight: 700; text-decoration: underline; }

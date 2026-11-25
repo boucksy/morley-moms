@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 117;
+  const APP_VERSION = 118;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -955,6 +955,7 @@
           <h3>${esc(evTitle)}${cue}</h3>
           ${ev.category === 'rides' || !whenText(ev) ? '' : `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>`}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
+          ${ev.plan_id ? `<p class="meta"><span>From a plan · <button class="link-btn" data-action="tab" data-tab="plans">See plan</button></span></p>` : ''}
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(ev.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
@@ -1058,7 +1059,8 @@
         </div>
       </div>
       ${when ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>${esc(when)}</span></p>` : ''}
-      ${linkedEvents(p.id).length ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>On the calendar</span></p>` : ''}
+      ${linkedEvents(p.id).length ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>On the calendar · <button class="link-btn" data-action="tab" data-tab="events">See event</button></span></p>`
+        : p.plan_date ? `<p class="meta"><button class="link-btn" data-action="plan-to-event" data-id="${esc(p.id)}">+ Put it on the calendar</button></p>` : ''}
       ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
       ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
       <div class="rsvp-btns mt-10" role="group" aria-label="${esc('Your response to ' + p.title)}">
@@ -1385,7 +1387,10 @@
       };
       if (fd.get('link').trim() && !row.link) throw new Error('That link doesn\u2019t look right. It should start with https://');
       if (series) { row.replaces = series.id; row.canceled = !!p.canceled; }
-      if (fd.get('plan_id')) row.plan_id = fd.get('plan_id');
+      // Same name and day as a plan? Link them so they stay together.
+      const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const match = !fd.get('plan_id') && !editing && state.plans.find((pl) => pl.plan_date === date && norm(pl.title) === norm(row.title));
+      if (fd.get('plan_id') || match) row.plan_id = fd.get('plan_id') || match.id;
       if (editing) await api.updateEvent(editing.id, row); else await api.addEvent(row);
       state.tab = 'events'; state.filter = 'all';
       toast(editing ? 'Event updated' : 'Event posted');
