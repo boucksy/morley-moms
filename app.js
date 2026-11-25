@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 118;
+  const APP_VERSION = 119;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -935,6 +935,7 @@
 
   function eventCard(ev) {
     if (ev._spell) return spellTestCard(ev);
+    if (ev._plan) return planEventCard(ev);
     const repeating = isRepeating(ev);
     const next = repeating ? nextOccurrence(ev) : null;
     const d = repeating ? (next || new Date(ev.starts_at)) : new Date(ev.starts_at);
@@ -955,7 +956,6 @@
           <h3>${esc(evTitle)}${cue}</h3>
           ${ev.category === 'rides' || !whenText(ev) ? '' : `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>`}
           ${ev.location ? `<p class="meta">${ICON.pin}<span>${esc(ev.location)}</span></p>` : ''}
-          ${ev.plan_id ? `<p class="meta"><span>From a plan · <button class="link-btn" data-action="tab" data-tab="plans">See plan</button></span></p>` : ''}
           ${ev.category === 'homework' ? classMeta(ev.classroom_id) : ''}
           ${ev.pickup_dropoff ? `<p class="meta">${ICON.car}<span><strong>Drop-off / pickup:</strong> ${esc(ev.pickup_dropoff)}</span></p>` : ''}
           ${ev.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(ev.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
@@ -1042,7 +1042,38 @@
     try { await api.setPlanStatus(planId, next, { id: myId(), name: myName() }); }
     catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
   }
-  const linkedEvents = (planId) => state.events.filter((e) => e.plan_id && String(e.plan_id) === String(planId));
+  function planRsvp(p) {
+    const mine = myResp(p.id);
+    const interested = respFor(p.id, 'interested').map((r) => firstName(r.member_name)).sort();
+    const signed = respFor(p.id, 'signed_up').map((r) => firstName(r.member_name)).sort();
+    return `
+      <div class="rsvp-btns mt-10" role="group" aria-label="${esc('Your response to ' + p.title)}">
+        <button class="rsvp-btn ${mine === 'interested' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="interested" aria-pressed="${mine === 'interested'}"><span class="box" aria-hidden="true">${mine === 'interested' ? '✓' : ''}</span>Interested</button>
+        <button class="rsvp-btn ${mine === 'signed_up' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="signed_up" aria-pressed="${mine === 'signed_up'}"><span class="box" aria-hidden="true">${mine === 'signed_up' ? '✓' : ''}</span>We signed up</button>
+      </div>
+      ${signed.length ? `<p class="who-line"><strong>Signed up (${signed.length}):</strong> ${esc(signed.join(', '))}</p>` : ''}
+      ${interested.length ? `<p class="who-line"><strong>Interested (${interested.length}):</strong> ${esc(interested.join(', '))}</p>` : ''}`;
+  }
+  // A plan shown as a card on the Events calendar, so everyone sees it and can answer right there.
+  function planEventCard(ev) {
+    const p = ev._plan, d = new Date(ev.starts_at), link = cleanLink(p.link);
+    return `
+      <article class="card event cat-social plan-event">
+        ${dateBadge(d, ev)}
+        <div class="body">
+          <span class="chip chip-now">Plan</span>
+          <h3>${esc(p.title)}</h3>
+          ${whenText(ev) ? `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>` : ''}
+          ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
+      ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
+          ${planRsvp(p)}
+          <div class="card-tools">
+            ${link ? `<a class="icon-btn icon-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="Open link (${esc(linkHost(link))})" title="${esc(linkHost(link))}">${ICON.link}</a>` : ''}
+            <button class="icon-btn" data-action="edit-plan" data-id="${esc(p.id)}" aria-label="${esc('Edit ' + p.title)}" title="Edit">${ICON.edit}</button>
+          </div>
+        </div>
+      </article>`;
+  }
   function planCard(p) {
     const mine = myResp(p.id);
     const interested = respFor(p.id, 'interested').map((r) => firstName(r.member_name)).sort();
@@ -1059,16 +1090,9 @@
         </div>
       </div>
       ${when ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>${esc(when)}</span></p>` : ''}
-      ${linkedEvents(p.id).length ? `<p class="meta">${ICON.calendar.replace('<svg', '<svg width="16" height="16"')}<span>On the calendar · <button class="link-btn" data-action="tab" data-tab="events">See event</button></span></p>`
-        : p.plan_date ? `<p class="meta"><button class="link-btn" data-action="plan-to-event" data-id="${esc(p.id)}">+ Put it on the calendar</button></p>` : ''}
       ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
       ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
-      <div class="rsvp-btns mt-10" role="group" aria-label="${esc('Your response to ' + p.title)}">
-        <button class="rsvp-btn ${mine === 'interested' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="interested" aria-pressed="${mine === 'interested'}"><span class="box" aria-hidden="true">${mine === 'interested' ? '✓' : ''}</span>Interested</button>
-        <button class="rsvp-btn ${mine === 'signed_up' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="signed_up" aria-pressed="${mine === 'signed_up'}"><span class="box" aria-hidden="true">${mine === 'signed_up' ? '✓' : ''}</span>We signed up</button>
-      </div>
-      ${signed.length ? `<p class="who-line"><strong>Signed up (${signed.length}):</strong> ${esc(signed.join(', '))}</p>` : ''}
-      ${interested.length ? `<p class="who-line"><strong>Interested (${interested.length}):</strong> ${esc(interested.join(', '))}</p>` : ''}
+      ${planRsvp(p)}
     </article>`;
   }
   function plansView() {
@@ -1185,7 +1209,6 @@
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${p ? 'Save changes' : 'Add plan'}</button>
           ${cancelBtn()}
-          ${p && p.plan_date && !linkedEvents(p.id).length ? `<button class="btn btn-ghost" type="button" data-action="plan-to-event" data-id="${esc(p.id)}">Put it on the calendar</button>` : ''}
           ${p ? `<button class="btn btn-danger" type="button" data-action="del-plan" data-id="${esc(p.id)}">Delete</button>` : ''}
         </div>
       </form>`, async (fd) => {
@@ -1262,10 +1285,19 @@
       title: 'Spelling test', subtitle: s.title || '', words: s.words || [],
       starts_at: parseDate(s.test_date).toISOString(), ends_at: null, all_day: true, repeat_days: [],
     }));
+    // Dated plans show on the calendar too, with the same Interested / We signed up buttons.
+    const normT = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    const planEvents = state.plans.filter((p) => p.plan_date && p.plan_date >= isoDate(today)
+      && !state.events.some((e) => (e.plan_id && String(e.plan_id) === String(p.id)) || (normT(e.title) === normT(p.title) && isoDate(localDay(e.starts_at)) === p.plan_date)))
+      .map((p) => ({
+        id: 'plan-' + p.id, _plan: p, category: 'social', title: p.title,
+        starts_at: (p.plan_time ? new Date(p.plan_date + 'T' + p.plan_time.slice(0, 5)) : parseDate(p.plan_date)).toISOString(),
+        ends_at: null, all_day: !p.plan_time, repeat_days: [],
+      }));
     // Hidden cards drop off the hidden list once their dates have passed (or the card is gone).
     const keepHidden = [...hiddenIds()].filter((id) => { const ev = state.events.find((x) => String(x.id) === id); return ev && lastDayOf(ev) >= today; });
     if (keepHidden.length !== hiddenIds().size) writeJson(HIDE_KEY, keepHidden);
-    const oneTime = [...state.events, ...spellEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
+    const oneTime = [...state.events, ...spellEvents, ...planEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
     const items = [
       ...oneTime.filter((e) => lastDayOf(e) >= today && !(isRange(e) && isHidden(e))),
       ...state.events.filter((e) => isRepeating(e) && match(e) && forMe(e)).flatMap((e) => occurrencesOf(e, today, off)),
@@ -1387,10 +1419,7 @@
       };
       if (fd.get('link').trim() && !row.link) throw new Error('That link doesn\u2019t look right. It should start with https://');
       if (series) { row.replaces = series.id; row.canceled = !!p.canceled; }
-      // Same name and day as a plan? Link them so they stay together.
-      const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-      const match = !fd.get('plan_id') && !editing && state.plans.find((pl) => pl.plan_date === date && norm(pl.title) === norm(row.title));
-      if (fd.get('plan_id') || match) row.plan_id = fd.get('plan_id') || match.id;
+      if (fd.get('plan_id')) row.plan_id = fd.get('plan_id');
       if (editing) await api.updateEvent(editing.id, row); else await api.addEvent(row);
       state.tab = 'events'; state.filter = 'all';
       toast(editing ? 'Event updated' : 'Event posted');
@@ -2558,12 +2587,7 @@
       else if (a === 'going') await setGoingFor(el.dataset.id, el.dataset.val);
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
-      else if (a === 'plan-to-event') {
-        const pl = state.plans.find((x) => String(x.id) === el.dataset.id); if (!pl) return;
-        closeSheet();
-        addEventSheet({ title: pl.title, category: 'social', date: pl.plan_date, time: pl.plan_time ? pl.plan_time.slice(0, 5) : '', link: pl.link || '', details: pl.details || '', plan_id: pl.id, _filled: false });
-      }
-      else if (a === 'del-plan') { if (!confirm(linkedEvents(el.dataset.id).length ? 'Delete this plan for everyone? It will come off the calendar too.' : 'Delete this plan for everyone?')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
+      else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone? It will come off the calendar too.')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
       else if (a === 'feedback-inbox') {
         let rows = [];
         try { rows = await api.listFeedback(); } catch { toast('Couldn’t load them. Try again in a bit.'); return; }
