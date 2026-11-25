@@ -1,0 +1,12 @@
+name: Inspect (one-off)
+on: workflow_dispatch
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Plans and events
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$DB" -c "select id, title, plan_date, plan_time from public.plans order by plan_date nulls last;"
+          psql "$DB" -c "select id, title, (starts_at at time zone 'America/Chicago')::date as d, category, plan_id from public.events where starts_at > now() - interval '30 days' order by starts_at;"
