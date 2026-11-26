@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 119;
+  const APP_VERSION = 120;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -1025,6 +1025,7 @@
     const next = val === 'yes' ? (cur === true ? null : true) : (cur === false ? null : false);
     state.going = state.going.filter((g) => !(g.event_id === eventId && g.member_id === myId()));
     if (next !== null) state.going.push({ event_id: eventId, member_id: myId(), member_name: myName(), going: next });
+    if (next === false) { hideCard(eventId); toast('Hidden on this phone. Find it under \u201CHidden cards\u201D at the bottom.'); }
     keepScroll(renderView);
     try { await api.setGoing(eventId, next, { id: myId(), name: myName() }); }
     catch { toast('Couldn’t save that. Run add-plans.sql in Supabase first.'); }
@@ -1067,6 +1068,7 @@
           ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
       ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
           ${planRsvp(p)}
+          <button class="rsvp-btn rsvp-cant" data-action="hide-card" data-id="${esc(ev.id)}">Can’t go</button>
           <div class="card-tools">
             ${link ? `<a class="icon-btn icon-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="Open link (${esc(linkHost(link))})" title="${esc(linkHost(link))}">${ICON.link}</a>` : ''}
             <button class="icon-btn" data-action="edit-plan" data-id="${esc(p.id)}" aria-label="${esc('Edit ' + p.title)}" title="Edit">${ICON.edit}</button>
@@ -1275,6 +1277,17 @@
     else writeJson(FILTER_PINS_KEY, [...p, id]);
   }
 
+  // Dated plans show on the calendar too, with the same Interested / We signed up buttons.
+  function planCalEvents(today) {
+    const normT = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    return state.plans.filter((p) => p.plan_date && p.plan_date >= isoDate(today)
+      && !state.events.some((e) => (e.plan_id && String(e.plan_id) === String(p.id)) || (normT(e.title) === normT(p.title) && isoDate(localDay(e.starts_at)) === p.plan_date)))
+      .map((p) => ({
+        id: 'plan-' + p.id, _plan: p, category: 'social', title: p.title,
+        starts_at: (p.plan_time ? new Date(p.plan_date + 'T' + p.plan_time.slice(0, 5)) : parseDate(p.plan_date)).toISOString(),
+        ends_at: null, all_day: !p.plan_time, repeat_days: [],
+      }));
+  }
   function eventsView() {
     const today = startOfToday();
     const off = noSchoolDates();
@@ -1285,21 +1298,14 @@
       title: 'Spelling test', subtitle: s.title || '', words: s.words || [],
       starts_at: parseDate(s.test_date).toISOString(), ends_at: null, all_day: true, repeat_days: [],
     }));
-    // Dated plans show on the calendar too, with the same Interested / We signed up buttons.
-    const normT = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    const planEvents = state.plans.filter((p) => p.plan_date && p.plan_date >= isoDate(today)
-      && !state.events.some((e) => (e.plan_id && String(e.plan_id) === String(p.id)) || (normT(e.title) === normT(p.title) && isoDate(localDay(e.starts_at)) === p.plan_date)))
-      .map((p) => ({
-        id: 'plan-' + p.id, _plan: p, category: 'social', title: p.title,
-        starts_at: (p.plan_time ? new Date(p.plan_date + 'T' + p.plan_time.slice(0, 5)) : parseDate(p.plan_date)).toISOString(),
-        ends_at: null, all_day: !p.plan_time, repeat_days: [],
-      }));
+    const planEvents = planCalEvents(today);
     // Hidden cards drop off the hidden list once their dates have passed (or the card is gone).
-    const keepHidden = [...hiddenIds()].filter((id) => { const ev = state.events.find((x) => String(x.id) === id); return ev && lastDayOf(ev) >= today; });
+    const keepHidden = [...hiddenIds()].filter((id) => { const ev = [...state.events, ...planEvents].find((x) => String(x.id) === id); return ev && lastDayOf(ev) >= today; });
     if (keepHidden.length !== hiddenIds().size) writeJson(HIDE_KEY, keepHidden);
     const oneTime = [...state.events, ...spellEvents, ...planEvents].filter((e) => !isRepeating(e) && match(e) && forMe(e));
+    const hiddenNow = [...state.events, ...planEvents].filter((e) => hideable(e) && isHidden(e) && lastDayOf(e) >= today);
     const items = [
-      ...oneTime.filter((e) => lastDayOf(e) >= today && !(isRange(e) && isHidden(e))),
+      ...oneTime.filter((e) => lastDayOf(e) >= today && !(hideable(e) && isHidden(e))),
       ...state.events.filter((e) => isRepeating(e) && match(e) && forMe(e)).flatMap((e) => occurrencesOf(e, today, off)),
     ];
     // Something already under way (like a break) is listed under this week.
@@ -1320,7 +1326,7 @@
       ${shown.length ? shown.map((w) => `${w.key === isoDate(mondayOf(today)) ? '' : `<p class="section-label week-label">${esc(weekHeading(parseDate(w.key)))}</p>`}${w.items.map(eventCard).join('')}`).join('') : `
         <div class="card empty"><p class="big">Nothing on the calendar</p></div>`}
       ${weeks.length > shown.length ? `<button class="btn btn-ghost btn-block mt-4" data-action="more-weeks">Show more weeks</button>` : ''}
-      ${state.events.some((e) => isRange(e) && isHidden(e)) ? `<button class="btn btn-ghost btn-small mt-12" data-action="hidden-cards">Hidden cards (${state.events.filter((e) => isRange(e) && isHidden(e)).length})</button>` : ''}
+      ${hiddenNow.length ? `<button class="btn btn-ghost btn-small mt-12" data-action="hidden-cards">Hidden cards (${hiddenNow.length})</button>` : ''}
       ${past.length ? `
         <button class="btn btn-ghost btn-small mt-12" data-action="toggle-past">${state.showPast ? 'Hide past events' : 'Show past events'}</button>
         ${state.showPast ? `<p class="section-label">Past</p>${past.map(eventCard).join('')}` : ''}` : ''}`;
@@ -1635,11 +1641,13 @@
   const hiddenIds = () => new Set(readJson(HIDE_KEY, []).map(String));
   const isHidden = (ev) => hiddenIds().has(String(ev.id));
   const isRange = (ev) => !ev._spell && !isRepeating(ev) && lastDayOf(ev) > localDay(ev.starts_at);
+  // Cards a mom can hide on her phone: multi-day ones, ones she can RSVP to, and plans on the calendar.
+  const hideable = (ev) => !ev._spell && (isRange(ev) || ev._plan || (ev.ask_going && !ev._occ));
   function hideCard(id) { const h = [...hiddenIds(), String(id)]; writeJson(HIDE_KEY, [...new Set(h)]); }
   function unhideCard(id) { writeJson(HIDE_KEY, [...hiddenIds()].filter((x) => x !== String(id))); }
   function hiddenSheet() {
     const ids = hiddenIds();
-    const list = state.events.filter((e) => ids.has(String(e.id)));
+    const list = [...state.events, ...planCalEvents(startOfToday())].filter((e) => ids.has(String(e.id)));
     openSheet(`<h2>Hidden cards</h2>
       ${subLead(`Only hidden on this phone. Tap Show to bring one back.`)}
       ${list.length ? list.map((e) => `<div class="frow"><div class="frow-name frow-name-static">${esc(e.title)}<br><small class="frow-when">${esc(whenText(e))}</small></div><button class="pin-btn" data-action="unhide" data-id="${esc(e.id)}" aria-label="${esc('Show ' + e.title + ' again')}">Show</button></div>`).join('') : '<p>Nothing hidden.</p>'}
