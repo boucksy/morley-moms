@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 122;
+  const APP_VERSION = 123;
   // Textareas grow with their content (capped; scrolls past that) so long notes stay easy to edit.
   const growTA = (t) => { if (!t || t.tagName !== 'TEXTAREA') return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, window.innerHeight * 0.5) + 'px'; };
   document.addEventListener('input', (e) => growTA(e.target));
@@ -1055,6 +1055,7 @@
       <div class="rsvp-btns mt-10" role="group" aria-label="${esc('Your response to ' + p.title)}">
         <button class="rsvp-btn ${mine === 'interested' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="interested" aria-pressed="${mine === 'interested'}"><span class="box" aria-hidden="true">${mine === 'interested' ? '✓' : ''}</span>Interested</button>
         <button class="rsvp-btn ${mine === 'signed_up' ? 'yes' : ''}" data-action="plan-status" data-id="${esc(p.id)}" data-val="signed_up" aria-pressed="${mine === 'signed_up'}"><span class="box" aria-hidden="true">${mine === 'signed_up' ? '✓' : ''}</span>We signed up</button>
+        <button class="rsvp-btn" data-action="plan-cant" data-id="${esc(p.id)}">Can’t go</button>
       </div>
       ${signed.length ? `<p class="who-line"><strong>Signed up (${signed.length}):</strong> ${esc(signed.join(', '))}</p>` : ''}
       ${interested.length ? `<p class="who-line"><strong>Interested (${interested.length}):</strong> ${esc(interested.join(', '))}</p>` : ''}`;
@@ -1104,12 +1105,15 @@
     const monthOf = (iso) => { const d = parseDate(iso); return d.getFullYear() * 12 + d.getMonth() - m0; };
     const inFilter = (p) => !p.plan_date ? f === 'future' : (f === 'this' ? monthOf(p.plan_date) === 0 : f === 'next' ? monthOf(p.plan_date) === 1 : monthOf(p.plan_date) > 1);
     const pill = (id, label) => `<button class="filter ${f === id ? 'on' : ''}" data-action="plan-filter" data-f="${id}" aria-pressed="${f === id}">${label}</button>`;
-    const list = state.plans.filter((p) => (!p.plan_date || p.plan_date >= todayIso) && inFilter(p)).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+    const hid = hiddenIds();
+    const hiddenPlans = state.plans.filter((p) => (!p.plan_date || p.plan_date >= todayIso) && hid.has('plan-' + p.id));
+    const list = state.plans.filter((p) => (!p.plan_date || p.plan_date >= todayIso) && inFilter(p) && !hid.has('plan-' + p.id)).sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
     return `
       <div class="page-head"><div><h2>Plans</h2></div></div>
       ${subLead(`Things we’re thinking about doing together. Tap Interested to show you’d like to go, then tap We signed up once you’ve registered.`, 'sub-lead-6')}
       <div class="filters" role="group" aria-label="Filter plans">${pill('this', 'This month')}${pill('next', 'Next month')}${pill('future', 'Future')}</div>
-      ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans here</p><p>Tap + to add something we might do together.</p></div>`}`;
+      ${list.length ? list.map(planCard).join('') : `<div class="card empty"><p class="big">No plans here</p><p>Tap + to add something we might do together.</p></div>`}
+      ${hiddenPlans.length ? `<button class="btn btn-ghost btn-small mt-12" data-action="hidden-cards">Hidden plans (${hiddenPlans.length})</button>` : ''}`;
   }
   // ---- recommendations ----
   const REC_CATS = [['care', '🩺', 'Doctors & care'], ['books', '📚', 'Books'], ['food', '🍽️', 'Food'], ['activities', '🎨', 'Activities'], ['shops', '🛍️', 'Shops & services'], ['other', '✨', 'Other']];
@@ -1655,10 +1659,11 @@
   function unhideCard(id) { writeJson(HIDE_KEY, [...hiddenIds()].filter((x) => x !== String(id))); }
   function hiddenSheet() {
     const ids = hiddenIds();
-    const list = [...state.events, ...planCalEvents(startOfToday())].filter((e) => ids.has(String(e.id)));
+    const planRows = state.plans.map((p) => ({ id: 'plan-' + p.id, title: p.title, plan_date: p.plan_date }));
+    const list = [...state.events, ...planRows].filter((e) => ids.has(String(e.id)));
     openSheet(`<h2>Hidden cards</h2>
       ${subLead(`Only hidden on this phone. Tap Show to bring one back.`)}
-      ${list.length ? list.map((e) => `<div class="frow"><div class="frow-name frow-name-static">${esc(e.title)}<br><small class="frow-when">${esc(whenText(e))}</small></div><button class="pin-btn" data-action="unhide" data-id="${esc(e.id)}" aria-label="${esc('Show ' + e.title + ' again')}">Show</button></div>`).join('') : '<p>Nothing hidden.</p>'}
+      ${list.length ? list.map((e) => `<div class="frow"><div class="frow-name frow-name-static">${esc(e.title)}<br><small class="frow-when">${esc(e.plan_date ? fmtDay(parseDate(e.plan_date)) : whenText(e))}</small></div><button class="pin-btn" data-action="unhide" data-id="${esc(e.id)}" aria-label="${esc('Show ' + e.title + ' again')}">Show</button></div>`).join('') : '<p>Nothing hidden.</p>'}
       <div class="sheet-actions"><button class="btn btn-ghost" data-action="close-sheet">Done</button></div>`);
   }
   const PINCH_KEY = 'mm.pinchZoom';
@@ -2601,6 +2606,7 @@
       else if (a === 'filter') { state.filter = el.dataset.filter; renderView(); }
       else if (a === 'ack-changes') { writeJson('mm.feat', FEATURE_NEWS.map((f) => f.id)); writeSeen(buildSnapshot()); closeSheet(); }
       else if (a === 'going') await setGoingFor(el.dataset.id, el.dataset.val);
+      else if (a === 'plan-cant') { const id = el.dataset.id; state.planResponses = state.planResponses.filter((r) => !(r.plan_id === id && r.member_id === myId())); hideCard('plan-' + id); keepScroll(renderView); toast('Hidden on this phone. Find it under \u201CHidden plans\u201D at the bottom.'); api.setPlanStatus(id, null, { id: myId(), name: myName() }).catch(() => {}); }
       else if (a === 'plan-status') await setPlanStatusFor(el.dataset.id, el.dataset.val);
       else if (a === 'edit-plan') planSheet(el.dataset.id);
       else if (a === 'del-plan') { if (!confirm('Delete this plan for everyone? It will come off the calendar too.')) return; await api.deletePlan(el.dataset.id); closeSheet(); toast('Plan deleted'); await refresh(); }
