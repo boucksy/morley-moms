@@ -6,7 +6,7 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 120;
+  const APP_VERSION = 121;
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
@@ -125,7 +125,7 @@
         return delay();
       },
       async listPlans() { return delay(db.plans.map((p) => ({ ...p }))); },
-      async addPlan(row) { db.plans.push({ ...row, id: uid(), created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(); },
+      async addPlan(row) { const id = uid(); db.plans.push({ ...row, id, created_by: 'u-me', created_by_name: state.me.display_name, created_at: new Date().toISOString() }); return delay(id); },
       async updatePlan(id, row) { Object.assign(db.plans.find((p) => p.id === id), row); return delay(); },
       async deletePlan(id) { db.events = db.events.filter((e) => e.plan_id !== id); db.plans = db.plans.filter((p) => p.id !== id); db.planResponses = db.planResponses.filter((r) => r.plan_id !== id); return delay(); },
       async listRecs() { return delay(db.recs.map((r) => ({ ...r }))); },
@@ -217,7 +217,7 @@
         else ok(await sb.from('event_going').upsert({ event_id: eventId, member_id: me.id, member_name: me.name, going }, { onConflict: 'event_id,member_id' }));
       },
       async listPlans() { return ok(await sb.from('plans').select('*').order('created_at', { ascending: false })); },
-      async addPlan(row) { ok(await sb.from('plans').insert(row)); },
+      async addPlan(row) { return ok(await sb.from('plans').insert(row).select('id').single()).id; },
       async updatePlan(id, row) { ok(await sb.from('plans').update(row).eq('id', id)); },
       async deletePlan(id) { ok(await sb.from('plans').delete().eq('id', id)); },
       async listRecs() { return ok(await sb.from('recs').select('*').order('created_at', { ascending: false })); },
@@ -1057,21 +1057,17 @@
   }
   // A plan shown as a card on the Events calendar, so everyone sees it and can answer right there.
   function planEventCard(ev) {
-    const p = ev._plan, d = new Date(ev.starts_at), link = cleanLink(p.link);
+    const p = ev._plan, d = new Date(ev.starts_at), link = cleanLink(p.link), st = myResp(p.id) === 'signed_up' ? 'Signed up' : 'Interested';
     return `
       <article class="card event cat-social plan-event">
         ${dateBadge(d, ev)}
         <div class="body">
-          <span class="chip chip-now">Plan</span>
+          <span class="chip chip-now">Plan · ${st}</span>
           <h3>${esc(p.title)}</h3>
           ${whenText(ev) ? `<p class="meta">${ICON.clock}<span>${esc(whenText(ev))}</span></p>` : ''}
-          ${p.cost ? `<p class="meta"><span class="cost-mark" aria-hidden="true">$</span><span><span class="sr-only">Cost: </span>${esc(p.cost)}</span></p>` : ''}
-      ${p.details ? `<div class="details-row"><p class="details clamp" data-details data-action="toggle-details">${linkify(p.details)}</p><button class="caret-btn" data-action="toggle-details" aria-label="Show more" aria-expanded="false"><svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>` : ''}
-          ${planRsvp(p)}
-          <button class="rsvp-btn rsvp-cant" data-action="hide-card" data-id="${esc(ev.id)}">Can’t go</button>
           <div class="card-tools">
             ${link ? `<a class="icon-btn icon-link" href="${esc(link)}" target="_blank" rel="noopener noreferrer" aria-label="Open link (${esc(linkHost(link))})" title="${esc(linkHost(link))}">${ICON.link}</a>` : ''}
-            <button class="icon-btn" data-action="edit-plan" data-id="${esc(p.id)}" aria-label="${esc('Edit ' + p.title)}" title="Edit">${ICON.edit}</button>
+            <button class="icon-btn" data-action="edit-plan" data-id="${esc(p.id)}" aria-label="${esc('Edit ' + p.title + ' or change your answer')}" title="Edit">${ICON.edit}</button>
           </div>
         </div>
       </article>`;
@@ -1208,6 +1204,7 @@
         <label class="field"><span>Time <small>(optional)</small></span><input class="input" type="time" name="plan_time" value="${esc(p && p.plan_time ? p.plan_time.slice(0, 5) : '')}"></label>
         <label class="field"><span>Cost <small>(optional)</small></span><input class="input" name="cost" maxlength="120" value="${esc(p && p.cost ? p.cost : '')}" placeholder="e.g. $5, or $34/adults, $10/kids"></label>
         <label class="field"><span>Details <small>(optional)</small></span><textarea class="input" name="details" maxlength="2000" placeholder="What the girls would do, what to bring…">${esc(p && p.details ? p.details : '')}</textarea></label>
+        <label class="field"><span>Your answer</span><select class="input" name="resp">${(() => { const cur = p ? (myResp(p.id) || '') : 'interested'; return [['', 'Not answered'], ['interested', 'Interested'], ['signed_up', 'We signed up']].map(([v, l]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${l}</option>`).join(''); })()}</select><small class="hint">Plans you’re interested in or signed up for show on the Events calendar.</small></label>
         <div class="sheet-actions">
           <button class="btn btn-primary" type="submit">${p ? 'Save changes' : 'Add plan'}</button>
           ${cancelBtn()}
@@ -1215,8 +1212,15 @@
         </div>
       </form>`, async (fd) => {
       const row = { title: fd.get('title').trim(), link: cleanLink(fd.get('link')) || null, plan_date: fd.get('plan_date') || null, plan_time: fd.get('plan_time') || null, cost: fd.get('cost').trim() || null, details: fd.get('details').trim() || null };
-      if (p) await api.updatePlan(p.id, row); else await api.addPlan(row);
-      state.tab = 'plans'; toast(p ? 'Plan updated' : 'Plan added');
+      let planId = p && p.id;
+      if (p) await api.updatePlan(p.id, row); else planId = await api.addPlan(row);
+      const want = fd.get('resp') || null;
+      if (planId && want !== (p ? myResp(p.id) : null)) {
+        await api.setPlanStatus(planId, want, { id: myId(), name: myName() });
+        state.planResponses = state.planResponses.filter((r) => !(r.plan_id === planId && r.member_id === myId()));
+        if (want) state.planResponses.push({ plan_id: planId, member_id: myId(), member_name: myName(), status: want });
+      }
+      state.tab = state.tab === 'events' ? 'events' : 'plans'; toast(p ? 'Plan updated' : 'Plan added');
     });
   }
 
@@ -1280,7 +1284,7 @@
   // Dated plans show on the calendar too, with the same Interested / We signed up buttons.
   function planCalEvents(today) {
     const normT = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    return state.plans.filter((p) => p.plan_date && p.plan_date >= isoDate(today)
+    return state.plans.filter((p) => p.plan_date && p.plan_date >= isoDate(today) && myResp(p.id)
       && !state.events.some((e) => (e.plan_id && String(e.plan_id) === String(p.id)) || (normT(e.title) === normT(p.title) && isoDate(localDay(e.starts_at)) === p.plan_date)))
       .map((p) => ({
         id: 'plan-' + p.id, _plan: p, category: 'social', title: p.title,
