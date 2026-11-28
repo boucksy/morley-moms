@@ -6,7 +6,11 @@
   'use strict';
 
   const cfg = window.MM_CONFIG || {};
-  const APP_VERSION = 121;
+  const APP_VERSION = 122;
+  // Textareas grow with their content (capped; scrolls past that) so long notes stay easy to edit.
+  const growTA = (t) => { if (!t || t.tagName !== 'TEXTAREA') return; t.style.height = 'auto'; t.style.height = Math.min(t.scrollHeight + 2, window.innerHeight * 0.5) + 'px'; };
+  document.addEventListener('input', (e) => growTA(e.target));
+  document.addEventListener('focusin', (e) => growTA(e.target));
   const LIVE = !!(cfg.SUPABASE_URL && cfg.SUPABASE_PUBLISHABLE_KEY && window.supabase);
   const PHOTO_BUCKET = 'spelling-photos';
 
